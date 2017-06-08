@@ -144,7 +144,7 @@ public class MyDfuAct extends Activity {
      */
     public void onCDUploadClicked(final View view) {
         showProgressBar();
-        final DfuServiceInitiator starter = new DfuServiceInitiator("F0:BA:D1:6C:5D:62")
+        final DfuServiceInitiator starter = new DfuServiceInitiator("C1:3C:F7:8F:79:90")
                 .setKeepBond(false);
         starter.setZip(R.raw.r02_update_wh0418);
         starter.start(this, DfuService.class);

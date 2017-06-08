@@ -2,8 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Android-nRF-Toolbox-dfu_only.iml" filepath="$PROJECT_DIR$/Android-nRF-Toolbox-dfu_only.iml" />
+      <module fileurl="file://$PROJECT_DIR$/DFU_Demo_With_NordicsemiLib.iml" filepath="$PROJECT_DIR$/DFU_Demo_With_NordicsemiLib.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/dfu/dfu.iml" filepath="$PROJECT_DIR$/dfu/dfu.iml" />
     </modules>
   </component>
 </project>
