@@ -487,12 +487,12 @@ public class DfuServiceInitiator {
 		SPManager.put(context,DfuBaseThread.EXTRA_DISABLE_NOTIFICATION, disableNotification);
 		SPManager.put(context,DfuBaseThread.EXTRA_FILE_MIME_TYPE, mimeType);
 		SPManager.put(context,DfuBaseThread.EXTRA_FILE_TYPE, fileType);
-		SPManager.put(context,DfuBaseThread.EXTRA_FILE_URI, fileUri);
-		SPManager.put(context,DfuBaseThread.EXTRA_FILE_PATH, filePath);
+//		SPManager.put(context,DfuBaseThread.EXTRA_FILE_URI, fileUri);
+//		SPManager.put(context,DfuBaseThread.EXTRA_FILE_PATH, filePath);
 		SPManager.put(context,DfuBaseThread.EXTRA_FILE_RES_ID, fileResId);
-		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_URI, initFileUri);
-		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_PATH, initFilePath);
-		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_RES_ID, initFileResId);
+//		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_URI, initFileUri);
+//		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_PATH, initFilePath);
+//		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_RES_ID, initFileResId);
 		SPManager.put(context,DfuBaseThread.EXTRA_KEEP_BOND, keepBond);
 		SPManager.put(context,DfuBaseThread.EXTRA_FORCE_DFU, forceDfu);
 		SPManager.put(context,DfuBaseThread.EXTRA_UNSAFE_EXPERIMENTAL_BUTTONLESS_DFU, enableUnsafeExperimentalButtonlessDfu);

@@ -931,6 +931,10 @@ public abstract class DfuBaseThread extends Thread implements DfuProgressInfo.Pr
 //					is = openInputStream(fileResId, mimeType, mbrSize, fileType);
 //				}
 //
+				 if (fileResId > 0) {
+					is = openInputStream(fileResId, mimeType, mbrSize, fileType);
+				}
+//
 //				if (initFileUri != null) {
 //					// Try to read the Init Packet file from URI
 //					initIs = context.getContentResolver().openInputStream(initFileUri);

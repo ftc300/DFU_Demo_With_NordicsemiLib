@@ -144,11 +144,11 @@ public class MyDfuAct extends Activity {
      */
     public void onCDUploadClicked(final View view) {
         showProgressBar();
-        final DfuServiceInitiator starter = new DfuServiceInitiator("C1:3C:F7:8F:79:90").setKeepBond(false);
+        final DfuServiceInitiator starter = new DfuServiceInitiator("C1:3C:F7:8F:79:90").setKeepBond(false).setDeviceName("CD_DFU");
         starter.setZip(R.raw.r02_update_wh0418);
         DfuThread thread = new DfuThread();
-        thread.context  = this;
-        starter.start(this, thread);
+        thread.context  = MyDfuAct.this;
+        starter.start(MyDfuAct.this, thread);
     }
 
 
