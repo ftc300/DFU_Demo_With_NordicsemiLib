@@ -25,7 +25,7 @@ package no.nordicsemi.android.dfu;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.content.Intent;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.preference.PreferenceManager;
@@ -69,7 +69,6 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 	 * until all the data packets are sent. Those notifications should be ignored. This flag will prevent from logging "Notification received..." more than once.
 	 * </p>
 	 * <p>
-	 * Additionally, sometimes after writing the command 6 ({@link LegacyDfuImpl#OP_CODE_RESET}), Android will receive a notification and update the characteristic value with 10-03-02 and the callback for write
 	 * reset command will log "[DFU] Data written to ..., value (0x): 10-03-02" instead of "...(x0): 06". But this does not matter for the DFU process.
 	 * </p>
 	 * <p>
@@ -98,7 +97,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 				if (characteristic.getUuid().equals(getPacketCharacteristicUUID())) {
 					if (mInitPacketInProgress) {
 						// We've got confirmation that the init packet was sent
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "Data written to " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "Data written to " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
 						mInitPacketInProgress = false;
 					} else if (mFirmwareUploadInProgress) {
 						// If the PACKET characteristic was written with image data, update counters
@@ -129,7 +128,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 							// In that case stop sending.
 							if (mAborted || mError != 0 || mRemoteErrorOccurred || mResetRequestSent) {
 								mFirmwareUploadInProgress = false;
-								mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_WARNING, "Upload terminated");
+								mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_WARNING, "Upload terminated");
 								notifyLock();
 								return;
 							}
@@ -143,17 +142,17 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 							return;
 						} catch (final HexFileValidationException e) {
 							loge("Invalid HEX file");
-							mError = DfuBaseService.ERROR_FILE_INVALID;
+							mError = DfuBaseThread.ERROR_FILE_INVALID;
 						} catch (final IOException e) {
 							loge("Error while reading the input stream", e);
-							mError = DfuBaseService.ERROR_FILE_IO_EXCEPTION;
+							mError = DfuBaseThread.ERROR_FILE_IO_EXCEPTION;
 						}
 					} else {
 						onPacketCharacteristicWrite(gatt, characteristic, status);
 					}
 				} else {
 					// If the CONTROL POINT characteristic was written just set the flag to true. The main thread will continue its task when notified.
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "Data written to " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "Data written to " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
 					mRequestCompleted = true;
 				}
 			} else {
@@ -165,7 +164,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 					mRequestCompleted = true;
 				else {
 					loge("Characteristic write error: " + status);
-					mError = DfuBaseService.ERROR_CONNECTION_MASK | status;
+					mError = DfuBaseThread.ERROR_CONNECTION_MASK | status;
 				}
 			}
 			notifyLock();
@@ -188,7 +187,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 				// In that case quit sending.
 				if (mAborted || mError != 0 || mRemoteErrorOccurred || mResetRequestSent) {
 					mFirmwareUploadInProgress = false;
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_WARNING, "Upload terminated");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_WARNING, "Upload terminated");
 					return;
 				}
 
@@ -209,35 +208,35 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 				writePacket(gatt, packetCharacteristic, buffer, size);
 			} catch (final HexFileValidationException e) {
 				loge("Invalid HEX file");
-				mError = DfuBaseService.ERROR_FILE_INVALID;
+				mError = DfuBaseThread.ERROR_FILE_INVALID;
 			} catch (final IOException e) {
 				loge("Error while reading the input stream", e);
-				mError = DfuBaseService.ERROR_FILE_IO_EXCEPTION;
+				mError = DfuBaseThread.ERROR_FILE_IO_EXCEPTION;
 			}
 		}
 
 		protected void handleNotification(final BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) {
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "Notification received from " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "Notification received from " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
 			mReceivedData = characteristic.getValue();
 			mFirmwareUploadInProgress = false;
 		}
 	}
 
-	BaseCustomDfuImpl(final Intent intent, final DfuBaseService service) {
-		super(intent, service);
+	BaseCustomDfuImpl(Context context, final DfuBaseThread service) {
+		super(context, service);
 
-		if (intent.hasExtra(DfuBaseService.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_ENABLED)) {
-			// Read from intent
-			final boolean packetReceiptNotificationEnabled = intent.getBooleanExtra(DfuBaseService.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_ENABLED, Build.VERSION.SDK_INT < Build.VERSION_CODES.M);
-			int numberOfPackets = intent.getIntExtra(DfuBaseService.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_VALUE, DfuServiceInitiator.DEFAULT_PRN_VALUE);
-			if (numberOfPackets < 0 || numberOfPackets > 0xFFFF)
-				numberOfPackets = DfuServiceInitiator.DEFAULT_PRN_VALUE;
-			if (!packetReceiptNotificationEnabled)
-				numberOfPackets = 0;
-			mPacketsBeforeNotification = numberOfPackets;
-		} else {
+//		if (intent.hasExtra(DfuBaseThread.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_ENABLED)) {
+//			// Read from intent
+//			final boolean packetReceiptNotificationEnabled = intent.getBooleanExtra(DfuBaseThread.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_ENABLED, Build.VERSION.SDK_INT < Build.VERSION_CODES.M);
+//			int numberOfPackets = intent.getIntExtra(DfuBaseThread.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_VALUE, DfuServiceInitiator.DEFAULT_PRN_VALUE);
+//			if (numberOfPackets < 0 || numberOfPackets > 0xFFFF)
+//				numberOfPackets = DfuServiceInitiator.DEFAULT_PRN_VALUE;
+//			if (!packetReceiptNotificationEnabled)
+//				numberOfPackets = 0;
+//			mPacketsBeforeNotification = numberOfPackets;
+//		} else {
 			// Read preferences
-			final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(service);
+			final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 			final boolean packetReceiptNotificationEnabled = preferences.getBoolean(DfuSettingsConstants.SETTINGS_PACKET_RECEIPT_NOTIFICATION_ENABLED, Build.VERSION.SDK_INT < Build.VERSION_CODES.M);
 			String value = preferences.getString(DfuSettingsConstants.SETTINGS_NUMBER_OF_PACKETS, String.valueOf(DfuServiceInitiator.DEFAULT_PRN_VALUE));
 			int numberOfPackets;
@@ -251,7 +250,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 			if (!packetReceiptNotificationEnabled)
 				numberOfPackets = 0;
 			mPacketsBeforeNotification = numberOfPackets;
-		}
+//		}
 	}
 
 	protected abstract UUID getControlPointCharacteristicUUID();
@@ -278,7 +277,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 			}
 		} catch (final IOException e) {
 			loge("Error while reading Init packet file", e);
-			throw new DfuException("Error while reading Init packet file", DfuBaseService.ERROR_FILE_ERROR);
+			throw new DfuException("Error while reading Init packet file", DfuBaseThread.ERROR_FILE_ERROR);
 		}
 	}
 
@@ -309,8 +308,8 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 		characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
 		characteristic.setValue(locBuffer);
 		logi("Sending init packet (Value = " + parse(locBuffer) + ")");
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Writing to characteristic " + characteristic.getUuid());
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.writeCharacteristic(" + characteristic.getUuid() + ")");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Writing to characteristic " + characteristic.getUuid());
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.writeCharacteristic(" + characteristic.getUuid() + ")");
 		mGatt.writeCharacteristic(characteristic);
 
 		// We have to wait for confirmation
@@ -349,12 +348,12 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 		final byte[] buffer = mBuffer;
 		try {
 			final int size = mFirmwareStream.read(buffer);
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Sending firmware to characteristic " + packetCharacteristic.getUuid() + "...");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Sending firmware to characteristic " + packetCharacteristic.getUuid() + "...");
 			writePacket(mGatt, packetCharacteristic, buffer, size);
 		} catch (final HexFileValidationException e) {
-			throw new DfuException("HEX file not valid", DfuBaseService.ERROR_FILE_INVALID);
+			throw new DfuException("HEX file not valid", DfuBaseThread.ERROR_FILE_INVALID);
 		} catch (final IOException e) {
-			throw new DfuException("Error while reading file", DfuBaseService.ERROR_FILE_IO_EXCEPTION);
+			throw new DfuException("Error while reading file", DfuBaseThread.ERROR_FILE_IO_EXCEPTION);
 		}
 
 		try {
@@ -401,16 +400,15 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 	/**
 	 * Closes the BLE connection to the device and removes/restores bonding, if a proper flags were set in the {@link DfuServiceInitiator}.
 	 * This method will also change the DFU state to completed or restart the service to send the second part.
-	 * @param intent the intent used to start the DFU service. It contains all user flags in the bundle.
 	 * @param forceRefresh true, if cache should be cleared even for a bonded device. Usually the Service Changed indication should be used for this purpose.
 	 */
-	protected void finalize(final Intent intent, final boolean forceRefresh) {
+	protected void finalize(final Context context, final boolean forceRefresh) {
 		/*
 		 * We are done with DFU. Now the service may refresh device cache and clear stored services.
 		 * For bonded device this is required only if if doesn't support Service Changed indication.
 		 * Android shouldn't cache services of non-bonded devices having Service Changed characteristic in their database, but it does, so...
 		 */
-		final boolean keepBond = intent.getBooleanExtra(DfuBaseService.EXTRA_KEEP_BOND, false);
+		final boolean keepBond = (boolean) SPManager.get(context,DfuBaseThread.EXTRA_KEEP_BOND, false);
 		mService.refreshDeviceCache(mGatt, forceRefresh || !keepBond);
 
 		// Close the device
@@ -423,7 +421,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 		 */
 		boolean alreadyWaited = false;
 		if (mGatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
-			final boolean restoreBond = intent.getBooleanExtra(DfuBaseService.EXTRA_RESTORE_BOND, false);
+			final boolean restoreBond = (boolean) SPManager.get(context,DfuBaseThread.EXTRA_RESTORE_BOND, false);
 			if (restoreBond || !keepBond) {
 				// The bond information was lost.
 				removeBond();
@@ -433,7 +431,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 				alreadyWaited = true;
 			}
 
-			if (restoreBond && (mFileType & DfuBaseService.TYPE_APPLICATION) > 0) {
+			if (restoreBond && (mFileType & DfuBaseThread.TYPE_APPLICATION) > 0) {
 				// Restore pairing when application was updated.
 				createBond();
 				alreadyWaited = false;
@@ -449,7 +447,7 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 			// Delay this event a little bit. Android needs some time to prepare for reconnection.
 			if (!alreadyWaited)
 				mService.waitFor(1400);
-			mProgressInfo.setProgress(DfuBaseService.PROGRESS_COMPLETED);
+			mProgressInfo.setProgress(DfuBaseThread.PROGRESS_COMPLETED);
 		} else {
 			/*
 			 * In case when the SoftDevice has been upgraded, and the application should be send in the following connection, we have to
@@ -470,13 +468,13 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 			 * We need to start another instance that will try to send application only.
 			 */
 			logi("Starting service that will upload application");
-			final Intent newIntent = new Intent();
-			newIntent.fillIn(intent, Intent.FILL_IN_COMPONENT | Intent.FILL_IN_PACKAGE);
-			newIntent.putExtra(DfuBaseService.EXTRA_FILE_MIME_TYPE, DfuBaseService.MIME_TYPE_ZIP); // ensure this is set (e.g. for scripts)
-			newIntent.putExtra(DfuBaseService.EXTRA_FILE_TYPE, DfuBaseService.TYPE_APPLICATION); // set the type to application only
-			newIntent.putExtra(DfuBaseService.EXTRA_PART_CURRENT, mProgressInfo.getCurrentPart() + 1);
-			newIntent.putExtra(DfuBaseService.EXTRA_PARTS_TOTAL, mProgressInfo.getTotalParts());
-			restartService(newIntent, /* the bootloader may advertise with different address */ true);
+//			final Intent newIntent = new Intent();
+//			newIntent.fillIn(intent, Intent.FILL_IN_COMPONENT | Intent.FILL_IN_PACKAGE);
+//			newIntent.putExtra(DfuBaseThread.EXTRA_FILE_MIME_TYPE, DfuBaseThread.MIME_TYPE_ZIP); // ensure this is set (e.g. for scripts)
+//			newIntent.putExtra(DfuBaseThread.EXTRA_FILE_TYPE, DfuBaseThread.TYPE_APPLICATION); // set the type to application only
+//			newIntent.putExtra(DfuBaseThread.EXTRA_PART_CURRENT, mProgressInfo.getCurrentPart() + 1);
+//			newIntent.putExtra(DfuBaseThread.EXTRA_PARTS_TOTAL, mProgressInfo.getTotalParts());
+//			restartService(newIntent, /* the bootloader may advertise with different address */ true);
 		}
 	}
 }

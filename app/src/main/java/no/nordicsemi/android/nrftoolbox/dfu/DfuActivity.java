@@ -168,7 +168,7 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 
 					// if this activity is still open and upload process was completed, cancel the notification
 					final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-					manager.cancel(DfuService.NOTIFICATION_ID);
+					manager.cancel(DfuThread.NOTIFICATION_ID);
 				}
 			}, 200);
 		}
@@ -184,7 +184,7 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 
 					// if this activity is still open and upload process was completed, cancel the notification
 					final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-					manager.cancel(DfuService.NOTIFICATION_ID);
+					manager.cancel(DfuThread.NOTIFICATION_ID);
 				}
 			}, 200);
 		}
@@ -204,13 +204,13 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 		public void onError(final String deviceAddress, final int error, final int errorType, final String message) {
 			showErrorMessage(message);
 
-			// We have to wait a bit before canceling notification. This is called before DfuService creates the last notification.
+			// We have to wait a bit before canceling notification. This is called before DfuThread creates the last notification.
 			new Handler().postDelayed(new Runnable() {
 				@Override
 				public void run() {
 					// if this activity is still open and upload process was completed, cancel the notification
 					final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-					manager.cancel(DfuService.NOTIFICATION_ID);
+					manager.cancel(DfuThread.NOTIFICATION_ID);
 				}
 			}, 200);
 		}
@@ -237,7 +237,7 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 		}
 
 		// restore saved state
-		mFileType = DfuService.TYPE_AUTO; // Default
+		mFileType = DfuThread.TYPE_AUTO; // Default
 		if (savedInstanceState != null) {
 			mFileType = savedInstanceState.getInt(DATA_FILE_TYPE);
 			mFileTypeTmp = savedInstanceState.getInt(DATA_FILE_TYPE_TMP);
@@ -506,27 +506,27 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 	private void updateFileInfo(final String fileName, final long fileSize, final int fileType) {
 		mFileNameView.setText(fileName);
 		switch (fileType) {
-			case DfuService.TYPE_AUTO:
+			case DfuThread.TYPE_AUTO:
 				mFileTypeView.setText(getResources().getStringArray(R.array.dfu_file_type)[0]);
 				break;
-			case DfuService.TYPE_SOFT_DEVICE:
+			case DfuThread.TYPE_SOFT_DEVICE:
 				mFileTypeView.setText(getResources().getStringArray(R.array.dfu_file_type)[1]);
 				break;
-			case DfuService.TYPE_BOOTLOADER:
+			case DfuThread.TYPE_BOOTLOADER:
 				mFileTypeView.setText(getResources().getStringArray(R.array.dfu_file_type)[2]);
 				break;
-			case DfuService.TYPE_APPLICATION:
+			case DfuThread.TYPE_APPLICATION:
 				mFileTypeView.setText(getResources().getStringArray(R.array.dfu_file_type)[3]);
 				break;
 		}
 		mFileSizeView.setText(getString(R.string.dfu_file_size_text, fileSize));
-		final String extension = mFileType == DfuService.TYPE_AUTO ? "(?i)ZIP" : "(?i)HEX|BIN"; // (?i) =  case insensitive
+		final String extension = mFileType == DfuThread.TYPE_AUTO ? "(?i)ZIP" : "(?i)HEX|BIN"; // (?i) =  case insensitive
 		final boolean statusOk = mStatusOk = MimeTypeMap.getFileExtensionFromUrl(fileName).matches(extension);
 		mFileStatusView.setText(statusOk ? R.string.dfu_file_status_ok : R.string.dfu_file_status_invalid);
 		mUploadButton.setEnabled(mSelectedDevice != null && statusOk);
 
 		// Ask the user for the Init packet file if HEX or BIN files are selected. In case of a ZIP file the Init packets should be included in the ZIP.
-		if (statusOk && fileType != DfuService.TYPE_AUTO) {
+		if (statusOk && fileType != DfuThread.TYPE_AUTO) {
 			new AlertDialog.Builder(this).setTitle(R.string.dfu_file_init_title).setMessage(R.string.dfu_file_init_message)
 					.setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
 						@Override
@@ -538,7 +538,7 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 				@Override
 				public void onClick(final DialogInterface dialog, final int which) {
 					final Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-					intent.setType(DfuService.MIME_TYPE_OCTET_STREAM);
+					intent.setType(DfuThread.MIME_TYPE_OCTET_STREAM);
 					intent.addCategory(Intent.CATEGORY_OPENABLE);
 					startActivityForResult(intent, SELECT_INIT_FILE_REQ);
 				}
@@ -565,16 +565,16 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 		mFileTypeTmp = mFileType;
 		int index = 0;
 		switch (mFileType) {
-			case DfuService.TYPE_AUTO:
+			case DfuThread.TYPE_AUTO:
 				index = 0;
 				break;
-			case DfuService.TYPE_SOFT_DEVICE:
+			case DfuThread.TYPE_SOFT_DEVICE:
 				index = 1;
 				break;
-			case DfuService.TYPE_BOOTLOADER:
+			case DfuThread.TYPE_BOOTLOADER:
 				index = 2;
 				break;
-			case DfuService.TYPE_APPLICATION:
+			case DfuThread.TYPE_APPLICATION:
 				index = 3;
 				break;
 		}
@@ -585,16 +585,16 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 					public void onClick(final DialogInterface dialog, final int which) {
 						switch (which) {
 							case 0:
-								mFileTypeTmp = DfuService.TYPE_AUTO;
+								mFileTypeTmp = DfuThread.TYPE_AUTO;
 								break;
 							case 1:
-								mFileTypeTmp = DfuService.TYPE_SOFT_DEVICE;
+								mFileTypeTmp = DfuThread.TYPE_SOFT_DEVICE;
 								break;
 							case 2:
-								mFileTypeTmp = DfuService.TYPE_BOOTLOADER;
+								mFileTypeTmp = DfuThread.TYPE_BOOTLOADER;
 								break;
 							case 3:
-								mFileTypeTmp = DfuService.TYPE_APPLICATION;
+								mFileTypeTmp = DfuThread.TYPE_APPLICATION;
 								break;
 						}
 					}
@@ -614,7 +614,7 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 
 	private void openFileChooser() {
 		final Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-		intent.setType(mFileTypeTmp == DfuService.TYPE_AUTO ? DfuService.MIME_TYPE_ZIP : DfuService.MIME_TYPE_OCTET_STREAM);
+		intent.setType(mFileTypeTmp == DfuThread.TYPE_AUTO ? DfuThread.MIME_TYPE_ZIP : DfuThread.MIME_TYPE_OCTET_STREAM);
 		intent.addCategory(Intent.CATEGORY_OPENABLE);
 		if (intent.resolveActivity(getPackageManager()) != null) {
 			// file browser has been found on the device
@@ -677,13 +677,13 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 		final DfuServiceInitiator starter = new DfuServiceInitiator(mSelectedDevice.getAddress())
 //				.setDeviceName(mSelectedDevice.getName())
 				.setKeepBond(keepBond);
-//		if (mFileType == DfuService.TYPE_AUTO)
+//		if (mFileType == DfuThread.TYPE_AUTO)
 //			starter.setZip(mFileStreamUri, mFilePath);
 //		else {
 //			starter.setBinOrHex(mFileType, mFileStreamUri, mFilePath).setInitFile(mInitFileStreamUri, mInitFilePath);
 //		}
 		starter.setZip(R.raw.r02_update_wh0418);
-		starter.start(this, DfuService.class);
+//		starter.start(this, DfuThread.class);
 	}
 
 	/**
@@ -694,15 +694,15 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 		final DfuServiceInitiator starter = new DfuServiceInitiator("F0:BA:D1:6C:5D:62")
 				.setKeepBond(false);
 		starter.setZip(R.raw.r02_update_wh0418);
-		starter.start(this, DfuService.class);
+//		starter.start(this, DfuThread.class);
 	}
 
 
 
 	private void showUploadCancelDialog() {
 		final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-		final Intent pauseAction = new Intent(DfuService.BROADCAST_ACTION);
-		pauseAction.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_PAUSE);
+		final Intent pauseAction = new Intent(DfuThread.BROADCAST_ACTION);
+		pauseAction.putExtra(DfuThread.EXTRA_ACTION, DfuThread.ACTION_PAUSE);
 		manager.sendBroadcast(pauseAction);
 
 		final UploadCancelFragment fragment = UploadCancelFragment.getInstance();
@@ -801,7 +801,7 @@ public class DfuActivity extends AppCompatActivity implements LoaderCallbacks<Cu
 	private boolean isDfuServiceRunning() {
 		ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
 		for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-			if (DfuService.class.getName().equals(service.service.getClassName())) {
+			if (DfuThread.class.getName().equals(service.service.getClassName())) {
 				return true;
 			}
 		}

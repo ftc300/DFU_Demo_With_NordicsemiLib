@@ -90,16 +90,16 @@
 			android:name="no.nordicsemi.android.nrftoolbox.dfu.NotificationActivity"
 			android:label="@string/dfu_feature_title" />
 
-		<service
-			android:name="no.nordicsemi.android.nrftoolbox.dfu.DfuService"
-			android:exported="true"
-			android:label="@string/dfu_service_title" >
-			<intent-filter>
-				<action android:name="no.nordicsemi.android.action.DFU_UPLOAD" />
+		<!--<service-->
+			<!--android:name="no.nordicsemi.android.nrftoolbox.dfu.DfuThread"-->
+			<!--android:exported="true"-->
+			<!--android:label="@string/dfu_service_title" >-->
+			<!--<intent-filter>-->
+				<!--<action android:name="no.nordicsemi.android.action.DFU_UPLOAD" />-->
 
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</service>
+				<!--<category android:name="android.intent.category.DEFAULT" />-->
+			<!--</intent-filter>-->
+		<!--</service>-->
 
 		<!--<activity-->
 			<!--android:name="no.nordicsemi.android.nrftoolbox.dfu.DfuInitiatorActivity"-->

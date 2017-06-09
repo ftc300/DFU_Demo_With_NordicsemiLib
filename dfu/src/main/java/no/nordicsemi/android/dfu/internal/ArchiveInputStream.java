@@ -36,7 +36,7 @@ import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import no.nordicsemi.android.dfu.DfuBaseService;
+import no.nordicsemi.android.dfu.DfuBaseThread;
 import no.nordicsemi.android.dfu.internal.manifest.FileInfo;
 import no.nordicsemi.android.dfu.internal.manifest.Manifest;
 import no.nordicsemi.android.dfu.internal.manifest.ManifestFile;
@@ -87,14 +87,14 @@ public class ArchiveInputStream extends ZipInputStream {
 	 * The ArchiveInputStream read HEX or BIN files from the Zip stream. It may skip some of them, depending on the value of the types parameter.
 	 * This is useful if the DFU service wants to send the Soft Device and Bootloader only, and then the Application in the following connection, despite
 	 * the ZIP file contains all 3 HEX/BIN files.
-	 * When types is equal to {@link DfuBaseService#TYPE_AUTO} all present files are read.
+	 * When types is equal to {@link DfuBaseThread#TYPE_AUTO} all present files are read.
 	 * </p>
 	 * <p>Use bit combination of the following types:</p>
 	 * <ul>
-	 * <li>{@link DfuBaseService#TYPE_SOFT_DEVICE}</li>
-	 * <li>{@link DfuBaseService#TYPE_BOOTLOADER}</li>
-	 * <li>{@link DfuBaseService#TYPE_APPLICATION}</li>
-	 * <li>{@link DfuBaseService#TYPE_AUTO}</li>
+	 * <li>{@link DfuBaseThread#TYPE_SOFT_DEVICE}</li>
+	 * <li>{@link DfuBaseThread#TYPE_BOOTLOADER}</li>
+	 * <li>{@link DfuBaseThread#TYPE_APPLICATION}</li>
+	 * <li>{@link DfuBaseThread#TYPE_AUTO}</li>
 	 * </ul>
 	 *
 	 * @param stream
@@ -102,7 +102,7 @@ public class ArchiveInputStream extends ZipInputStream {
 	 * @param mbrSize
 	 *            The size of the MRB segment (Master Boot Record) on the device. The parser will cut data from addresses below that number from all HEX files.
 	 * @param types
-	 *            File types that are to be read from the ZIP. Use {@link DfuBaseService#TYPE_APPLICATION} etc.
+	 *            File types that are to be read from the ZIP. Use {@link DfuBaseThread#TYPE_APPLICATION} etc.
 	 * @throws java.io.IOException
 	 */
 	public ArchiveInputStream(final InputStream stream, final int mbrSize, final int types) throws IOException {
@@ -127,7 +127,7 @@ public class ArchiveInputStream extends ZipInputStream {
 				boolean valid = false;
 
 				// Read the application
-				if (manifest.getApplicationInfo() != null && (types == DfuBaseService.TYPE_AUTO || (types & DfuBaseService.TYPE_APPLICATION) > 0)) {
+				if (manifest.getApplicationInfo() != null && (types == DfuBaseThread.TYPE_AUTO || (types & DfuBaseThread.TYPE_APPLICATION) > 0)) {
 					final FileInfo application = manifest.getApplicationInfo();
 					applicationBytes = entries.get(application.getBinFileName());
 					applicationInitBytes = entries.get(application.getDatFileName());
@@ -140,7 +140,7 @@ public class ArchiveInputStream extends ZipInputStream {
 				}
 
 				// Read the Bootloader
-				if (manifest.getBootloaderInfo() != null && (types == DfuBaseService.TYPE_AUTO || (types & DfuBaseService.TYPE_BOOTLOADER) > 0)) {
+				if (manifest.getBootloaderInfo() != null && (types == DfuBaseThread.TYPE_AUTO || (types & DfuBaseThread.TYPE_BOOTLOADER) > 0)) {
 					if (systemInitBytes != null)
 						throw new IOException("Manifest: softdevice and bootloader specified. Use softdevice_bootloader instead.");
 
@@ -156,7 +156,7 @@ public class ArchiveInputStream extends ZipInputStream {
 				}
 
 				// Read the Soft Device
-				if (manifest.getSoftdeviceInfo() != null && (types == DfuBaseService.TYPE_AUTO || (types & DfuBaseService.TYPE_SOFT_DEVICE) > 0)) {
+				if (manifest.getSoftdeviceInfo() != null && (types == DfuBaseThread.TYPE_AUTO || (types & DfuBaseThread.TYPE_SOFT_DEVICE) > 0)) {
 					final FileInfo softdevice = manifest.getSoftdeviceInfo();
 					softDeviceBytes = entries.get(softdevice.getBinFileName());
 					systemInitBytes = entries.get(softdevice.getDatFileName());
@@ -169,8 +169,8 @@ public class ArchiveInputStream extends ZipInputStream {
 				}
 
 				// Read the combined Soft Device and Bootloader
-				if (manifest.getSoftdeviceBootloaderInfo() != null && (types == DfuBaseService.TYPE_AUTO ||
-						((types & DfuBaseService.TYPE_SOFT_DEVICE) > 0) && (types & DfuBaseService.TYPE_BOOTLOADER) > 0)) {
+				if (manifest.getSoftdeviceBootloaderInfo() != null && (types == DfuBaseThread.TYPE_AUTO ||
+						((types & DfuBaseThread.TYPE_SOFT_DEVICE) > 0) && (types & DfuBaseThread.TYPE_BOOTLOADER) > 0)) {
 					if (systemInitBytes != null)
 						throw new IOException("Manifest: The softdevice_bootloader may not be used together with softdevice or bootloader.");
 
@@ -203,7 +203,7 @@ public class ArchiveInputStream extends ZipInputStream {
 				 */
 				boolean valid = false;
 				// Search for the application
-				if (types == DfuBaseService.TYPE_AUTO || (types & DfuBaseService.TYPE_APPLICATION) > 0) {
+				if (types == DfuBaseThread.TYPE_AUTO || (types & DfuBaseThread.TYPE_APPLICATION) > 0) {
 					applicationBytes = entries.get(APPLICATION_HEX); // the entry bytes has already been converted to BIN, just the name remained.
 					if (applicationBytes == null)
 						applicationBytes = entries.get(APPLICATION_BIN);
@@ -216,7 +216,7 @@ public class ArchiveInputStream extends ZipInputStream {
 				}
 
 				// Search for theBootloader
-				if (types == DfuBaseService.TYPE_AUTO || (types & DfuBaseService.TYPE_BOOTLOADER) > 0) {
+				if (types == DfuBaseThread.TYPE_AUTO || (types & DfuBaseThread.TYPE_BOOTLOADER) > 0) {
 					bootloaderBytes = entries.get(BOOTLOADER_HEX); // the entry bytes has already been converted to BIN, just the name remained.
 					if (bootloaderBytes == null)
 						bootloaderBytes = entries.get(BOOTLOADER_BIN);
@@ -229,7 +229,7 @@ public class ArchiveInputStream extends ZipInputStream {
 				}
 
 				// Search for the Soft Device
-				if (types == DfuBaseService.TYPE_AUTO || (types & DfuBaseService.TYPE_SOFT_DEVICE) > 0) {
+				if (types == DfuBaseThread.TYPE_AUTO || (types & DfuBaseThread.TYPE_SOFT_DEVICE) > 0) {
 					softDeviceBytes = entries.get(SOFTDEVICE_HEX); // the entry bytes has already been converted to BIN, just the name remained.
 					if (softDeviceBytes == null)
 						softDeviceBytes = entries.get(SOFTDEVICE_BIN);
@@ -385,21 +385,21 @@ public class ArchiveInputStream extends ZipInputStream {
 	/**
 	 * Returns the content type based on the content of the ZIP file. The content type may be truncated using {@link #setContentType(int)}.
 	 * 
-	 * @return a bit field of {@link DfuBaseService#TYPE_SOFT_DEVICE TYPE_SOFT_DEVICE}, {@link DfuBaseService#TYPE_BOOTLOADER TYPE_BOOTLOADER} and {@link DfuBaseService#TYPE_APPLICATION
+	 * @return a bit field of {@link DfuBaseThread#TYPE_SOFT_DEVICE TYPE_SOFT_DEVICE}, {@link DfuBaseThread#TYPE_BOOTLOADER TYPE_BOOTLOADER} and {@link DfuBaseThread#TYPE_APPLICATION
 	 *         TYPE_APPLICATION}
 	 */
 	public int getContentType() {
 		byte type = 0;
 		// In Secure DFU the softDeviceSize and bootloaderSize may be 0 if both are in the ZIP file. The size of each part is embedded in the Init packet.
 		if (softDeviceAndBootloaderBytes != null)
-			type |= DfuBaseService.TYPE_SOFT_DEVICE | DfuBaseService.TYPE_BOOTLOADER;
+			type |= DfuBaseThread.TYPE_SOFT_DEVICE | DfuBaseThread.TYPE_BOOTLOADER;
 		// In Legacy DFU the size of each of these parts was given in the manifest file.
 		if (softDeviceSize > 0)
-			type |= DfuBaseService.TYPE_SOFT_DEVICE;
+			type |= DfuBaseThread.TYPE_SOFT_DEVICE;
 		if (bootloaderSize > 0)
-			type |= DfuBaseService.TYPE_BOOTLOADER;
+			type |= DfuBaseThread.TYPE_BOOTLOADER;
 		if (applicationSize > 0)
-			type |= DfuBaseService.TYPE_APPLICATION;
+			type |= DfuBaseThread.TYPE_APPLICATION;
 		return type;
 	}
 
@@ -416,7 +416,7 @@ public class ArchiveInputStream extends ZipInputStream {
 
 		final int t = getContentType() & type;
 
-		if ((t & DfuBaseService.TYPE_SOFT_DEVICE) == 0) {
+		if ((t & DfuBaseThread.TYPE_SOFT_DEVICE) == 0) {
 			softDeviceBytes = null;
 			if (softDeviceAndBootloaderBytes != null) {
 				softDeviceAndBootloaderBytes = null;
@@ -424,7 +424,7 @@ public class ArchiveInputStream extends ZipInputStream {
 			}
 			softDeviceSize = 0;
 		}
-		if ((t & DfuBaseService.TYPE_BOOTLOADER) == 0) {
+		if ((t & DfuBaseThread.TYPE_BOOTLOADER) == 0) {
 			bootloaderBytes = null;
 			if (softDeviceAndBootloaderBytes != null) {
 				softDeviceAndBootloaderBytes = null;
@@ -432,7 +432,7 @@ public class ArchiveInputStream extends ZipInputStream {
 			}
 			bootloaderSize = 0;
 		}
-		if ((t & DfuBaseService.TYPE_APPLICATION) == 0) {
+		if ((t & DfuBaseThread.TYPE_APPLICATION) == 0) {
 			applicationBytes = null;
 			applicationSize = 0;
 		}

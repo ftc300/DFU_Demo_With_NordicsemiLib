@@ -25,7 +25,6 @@
 package no.nordicsemi.android.dfu;
 
 import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.ParcelUuid;
 import android.os.Parcelable;
@@ -102,7 +101,7 @@ public class DfuServiceInitiator {
 
 	/**
 	 * Sets whether the bond information should be preserver after flashing new application. This feature requires DFU Bootloader version 0.6 or newer (SDK 8.0.0+).
-	 * Please see the {@link DfuBaseService#EXTRA_KEEP_BOND} for more information regarding requirements. Remember that currently updating the Soft Device will remove the bond information.
+	 * Please see the {@link DfuBaseThread#EXTRA_KEEP_BOND} for more information regarding requirements. Remember that currently updating the Soft Device will remove the bond information.
 	 * @param keepBond whether the bond information should be preserved in the new application.
 	 * @return the builder
 	 */
@@ -295,7 +294,7 @@ public class DfuServiceInitiator {
 	 * @see #setZip(int)
 	 */
 	public DfuServiceInitiator setZip(final Uri uri) {
-		return init(uri, null, 0, DfuBaseService.TYPE_AUTO, DfuBaseService.MIME_TYPE_ZIP);
+		return init(uri, null, 0, DfuBaseThread.TYPE_AUTO, DfuBaseThread.MIME_TYPE_ZIP);
 	}
 
 	/**
@@ -306,7 +305,7 @@ public class DfuServiceInitiator {
 	 * @see #setZip(int)
 	 */
 	public DfuServiceInitiator setZip(final String path) {
-		return init(null, path, 0, DfuBaseService.TYPE_AUTO, DfuBaseService.MIME_TYPE_ZIP);
+		return init(null, path, 0, DfuBaseThread.TYPE_AUTO, DfuBaseThread.MIME_TYPE_ZIP);
 	}
 
 	/**
@@ -317,7 +316,7 @@ public class DfuServiceInitiator {
 	 * @see #setZip(String)
 	 */
 	public DfuServiceInitiator setZip(final int rawResId) {
-		return init(null, null, rawResId, DfuBaseService.TYPE_AUTO, DfuBaseService.MIME_TYPE_ZIP);
+		return init(null, null, rawResId, DfuBaseThread.TYPE_AUTO, DfuBaseThread.MIME_TYPE_ZIP);
 	}
 
 	/**
@@ -327,7 +326,7 @@ public class DfuServiceInitiator {
 	 * @return the builder
 	 */
 	public DfuServiceInitiator setZip(final Uri uri, final String path) {
-		return init(uri, path, 0, DfuBaseService.TYPE_AUTO, DfuBaseService.MIME_TYPE_ZIP);
+		return init(uri, path, 0, DfuBaseThread.TYPE_AUTO, DfuBaseThread.MIME_TYPE_ZIP);
 	}
 
 	/**
@@ -335,18 +334,18 @@ public class DfuServiceInitiator {
 	 * For DFU Bootloader version 0.5 or newer the init file must be specified using one of {@link #setInitFile(Uri)} methods.
 	 * @param fileType the file type, a bit field created from:
 	 *  	<ul>
-	 * 		    <li>{@link DfuBaseService#TYPE_APPLICATION} - the Application will be sent</li>
-	 * 		    <li>{@link DfuBaseService#TYPE_SOFT_DEVICE} - he Soft Device will be sent</li>
-	 * 		    <li>{@link DfuBaseService#TYPE_BOOTLOADER} - the Bootloader will be sent</li>
+	 * 		    <li>{@link DfuBaseThread#TYPE_APPLICATION} - the Application will be sent</li>
+	 * 		    <li>{@link DfuBaseThread#TYPE_SOFT_DEVICE} - he Soft Device will be sent</li>
+	 * 		    <li>{@link DfuBaseThread#TYPE_BOOTLOADER} - the Bootloader will be sent</li>
 	 * 		</ul>
 	 * @param uri the URI of the file
 	 * @return the builder
 	 */
 	@Deprecated
 	public DfuServiceInitiator setBinOrHex(final int fileType, final Uri uri) {
-		if (fileType == DfuBaseService.TYPE_AUTO)
+		if (fileType == DfuBaseThread.TYPE_AUTO)
 			throw new UnsupportedOperationException("You must specify the file type");
-		return init(uri, null, 0, fileType, DfuBaseService.MIME_TYPE_OCTET_STREAM);
+		return init(uri, null, 0, fileType, DfuBaseThread.MIME_TYPE_OCTET_STREAM);
 	}
 
 	/**
@@ -358,9 +357,9 @@ public class DfuServiceInitiator {
 	 */
 	@Deprecated
 	public DfuServiceInitiator setBinOrHex(final int fileType, final String path) {
-		if (fileType == DfuBaseService.TYPE_AUTO)
+		if (fileType == DfuBaseThread.TYPE_AUTO)
 			throw new UnsupportedOperationException("You must specify the file type");
-		return init(null, path, 0, fileType, DfuBaseService.MIME_TYPE_OCTET_STREAM);
+		return init(null, path, 0, fileType, DfuBaseThread.MIME_TYPE_OCTET_STREAM);
 	}
 
 	/**
@@ -374,9 +373,9 @@ public class DfuServiceInitiator {
 	 */
 	@Deprecated
 	public DfuServiceInitiator setBinOrHex(final int fileType, final Uri uri, final String path) {
-		if (fileType == DfuBaseService.TYPE_AUTO)
+		if (fileType == DfuBaseThread.TYPE_AUTO)
 			throw new UnsupportedOperationException("You must specify the file type");
-		return init(uri, path, 0, fileType, DfuBaseService.MIME_TYPE_OCTET_STREAM);
+		return init(uri, path, 0, fileType, DfuBaseThread.MIME_TYPE_OCTET_STREAM);
 	}
 
 	/**
@@ -388,9 +387,9 @@ public class DfuServiceInitiator {
 	 */
 	@Deprecated
 	public DfuServiceInitiator setBinOrHex(final int fileType, final int rawResId) {
-		if (fileType == DfuBaseService.TYPE_AUTO)
+		if (fileType == DfuBaseThread.TYPE_AUTO)
 			throw new UnsupportedOperationException("You must specify the file type");
-		return init(null, null, rawResId, fileType, DfuBaseService.MIME_TYPE_OCTET_STREAM);
+		return init(null, null, rawResId, fileType, DfuBaseThread.MIME_TYPE_OCTET_STREAM);
 	}
 
 	/**
@@ -441,31 +440,65 @@ public class DfuServiceInitiator {
 	/**
 	 * Starts the DFU service.
 	 * @param context the application context
-	 * @param service the class derived from the BaseDfuService
+	 * @param thread the class derived from the BaseDfuService
 	 */
-	public DfuServiceController start(final Context context, final Class<? extends DfuBaseService> service) {
+	public DfuServiceController start(final Context context, final DfuBaseThread thread) {
 		if (fileType == -1)
 			throw new UnsupportedOperationException("You must specify the firmware file before starting the service");
 
-		final Intent intent = new Intent(context, service);
+//		final Intent intent = new Intent(context, thread);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_DEVICE_ADDRESS, deviceAddress);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_DEVICE_NAME, deviceName);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_DISABLE_NOTIFICATION, disableNotification);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_FILE_MIME_TYPE, mimeType);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_FILE_TYPE, fileType);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_FILE_URI, fileUri);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_FILE_PATH, filePath);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_FILE_RES_ID, fileResId);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_INIT_FILE_URI, initFileUri);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_INIT_FILE_PATH, initFilePath);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_INIT_FILE_RES_ID, initFileResId);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_KEEP_BOND, keepBond);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_FORCE_DFU, forceDfu);
+//		SPManager.put(context,(DfuBaseThread.EXTRA_UNSAFE_EXPERIMENTAL_BUTTONLESS_DFU, enableUnsafeExperimentalButtonlessDfu);
+//		if (packetReceiptNotificationsEnabled != null) {
+//			SPManager.put(context,(DfuBaseThread.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_ENABLED, packetReceiptNotificationsEnabled);
+//			SPManager.put(context,(DfuBaseThread.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_VALUE, numberOfPackets);
+//		} else {
+//			// For backwards compatibility:
+//			// If the setPacketsReceiptNotificationsEnabled(boolean) has not been called, the PRN state and value are taken from
+//			// SharedPreferences the way they were read in DFU Library in 1.0.3 and before, or set to default values.
+//			// Default values: PRNs enabled on Android 4.3 - 5.1 and disabled starting from Android 6.0. Default PRN value is 12.
+//		}
+//		if (legacyDfuUuids != null)
+//			SPManager.put(context,(DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_LEGACY_DFU, legacyDfuUuids);
+//		if (secureDfuUuids != null)
+//			SPManager.put(context,(DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_SECURE_DFU, secureDfuUuids);
+//		if (experimentalButtonlessDfuUuids != null)
+//			SPManager.put(context,(DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_EXPERIMENTAL_BUTTONLESS_DFU, experimentalButtonlessDfuUuids);
+//		if (buttonlessDfuWithoutBondSharingUuids != null)
+//			SPManager.put(context,(DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_BUTTONLESS_DFU_WITHOUT_BOND_SHARING, buttonlessDfuWithoutBondSharingUuids);
+//		if (buttonlessDfuWithBondSharingUuids != null)
+//			SPManager.put(context,(DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_BUTTONLESS_DFU_WITH_BOND_SHARING, buttonlessDfuWithBondSharingUuids);
+//		context.startService(intent);
 
-		intent.putExtra(DfuBaseService.EXTRA_DEVICE_ADDRESS, deviceAddress);
-		intent.putExtra(DfuBaseService.EXTRA_DEVICE_NAME, deviceName);
-		intent.putExtra(DfuBaseService.EXTRA_DISABLE_NOTIFICATION, disableNotification);
-		intent.putExtra(DfuBaseService.EXTRA_FILE_MIME_TYPE, mimeType);
-		intent.putExtra(DfuBaseService.EXTRA_FILE_TYPE, fileType);
-		intent.putExtra(DfuBaseService.EXTRA_FILE_URI, fileUri);
-		intent.putExtra(DfuBaseService.EXTRA_FILE_PATH, filePath);
-		intent.putExtra(DfuBaseService.EXTRA_FILE_RES_ID, fileResId);
-		intent.putExtra(DfuBaseService.EXTRA_INIT_FILE_URI, initFileUri);
-		intent.putExtra(DfuBaseService.EXTRA_INIT_FILE_PATH, initFilePath);
-		intent.putExtra(DfuBaseService.EXTRA_INIT_FILE_RES_ID, initFileResId);
-		intent.putExtra(DfuBaseService.EXTRA_KEEP_BOND, keepBond);
-		intent.putExtra(DfuBaseService.EXTRA_FORCE_DFU, forceDfu);
-		intent.putExtra(DfuBaseService.EXTRA_UNSAFE_EXPERIMENTAL_BUTTONLESS_DFU, enableUnsafeExperimentalButtonlessDfu);
+		SPManager.put(context,DfuBaseThread.EXTRA_DEVICE_ADDRESS, deviceAddress);
+		SPManager.put(context,DfuBaseThread.EXTRA_DEVICE_NAME, deviceName);
+		SPManager.put(context,DfuBaseThread.EXTRA_DISABLE_NOTIFICATION, disableNotification);
+		SPManager.put(context,DfuBaseThread.EXTRA_FILE_MIME_TYPE, mimeType);
+		SPManager.put(context,DfuBaseThread.EXTRA_FILE_TYPE, fileType);
+		SPManager.put(context,DfuBaseThread.EXTRA_FILE_URI, fileUri);
+		SPManager.put(context,DfuBaseThread.EXTRA_FILE_PATH, filePath);
+		SPManager.put(context,DfuBaseThread.EXTRA_FILE_RES_ID, fileResId);
+		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_URI, initFileUri);
+		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_PATH, initFilePath);
+		SPManager.put(context,DfuBaseThread.EXTRA_INIT_FILE_RES_ID, initFileResId);
+		SPManager.put(context,DfuBaseThread.EXTRA_KEEP_BOND, keepBond);
+		SPManager.put(context,DfuBaseThread.EXTRA_FORCE_DFU, forceDfu);
+		SPManager.put(context,DfuBaseThread.EXTRA_UNSAFE_EXPERIMENTAL_BUTTONLESS_DFU, enableUnsafeExperimentalButtonlessDfu);
 		if (packetReceiptNotificationsEnabled != null) {
-			intent.putExtra(DfuBaseService.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_ENABLED, packetReceiptNotificationsEnabled);
-			intent.putExtra(DfuBaseService.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_VALUE, numberOfPackets);
+			SPManager.put(context,DfuBaseThread.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_ENABLED, packetReceiptNotificationsEnabled);
+			SPManager.put(context,DfuBaseThread.EXTRA_PACKET_RECEIPT_NOTIFICATIONS_VALUE, numberOfPackets);
 		} else {
 			// For backwards compatibility:
 			// If the setPacketsReceiptNotificationsEnabled(boolean) has not been called, the PRN state and value are taken from
@@ -473,22 +506,21 @@ public class DfuServiceInitiator {
 			// Default values: PRNs enabled on Android 4.3 - 5.1 and disabled starting from Android 6.0. Default PRN value is 12.
 		}
 		if (legacyDfuUuids != null)
-			intent.putExtra(DfuBaseService.EXTRA_CUSTOM_UUIDS_FOR_LEGACY_DFU, legacyDfuUuids);
+			SPManager.put(context,DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_LEGACY_DFU, legacyDfuUuids);
 		if (secureDfuUuids != null)
-			intent.putExtra(DfuBaseService.EXTRA_CUSTOM_UUIDS_FOR_SECURE_DFU, secureDfuUuids);
+			SPManager.put(context,DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_SECURE_DFU, secureDfuUuids);
 		if (experimentalButtonlessDfuUuids != null)
-			intent.putExtra(DfuBaseService.EXTRA_CUSTOM_UUIDS_FOR_EXPERIMENTAL_BUTTONLESS_DFU, experimentalButtonlessDfuUuids);
+			SPManager.put(context,DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_EXPERIMENTAL_BUTTONLESS_DFU, experimentalButtonlessDfuUuids);
 		if (buttonlessDfuWithoutBondSharingUuids != null)
-			intent.putExtra(DfuBaseService.EXTRA_CUSTOM_UUIDS_FOR_BUTTONLESS_DFU_WITHOUT_BOND_SHARING, buttonlessDfuWithoutBondSharingUuids);
+			SPManager.put(context,DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_BUTTONLESS_DFU_WITHOUT_BOND_SHARING, buttonlessDfuWithoutBondSharingUuids);
 		if (buttonlessDfuWithBondSharingUuids != null)
-			intent.putExtra(DfuBaseService.EXTRA_CUSTOM_UUIDS_FOR_BUTTONLESS_DFU_WITH_BOND_SHARING, buttonlessDfuWithBondSharingUuids);
-
-		context.startService(intent);
+			SPManager.put(context,DfuBaseThread.EXTRA_CUSTOM_UUIDS_FOR_BUTTONLESS_DFU_WITH_BOND_SHARING, buttonlessDfuWithBondSharingUuids);
+		thread.start();
 		return new DfuServiceController(context);
 	}
 
 	private DfuServiceInitiator init(final Uri initFileUri, final String initFilePath, final int initFileResId) {
-		if (DfuBaseService.MIME_TYPE_ZIP.equals(mimeType))
+		if (DfuBaseThread.MIME_TYPE_ZIP.equals(mimeType))
 			throw new InvalidParameterException("Init file must be located inside the ZIP");
 
 		this.initFileUri = initFileUri;
@@ -505,7 +537,7 @@ public class DfuServiceInitiator {
 		this.mimeType = mimeType;
 
 		// If the MIME TYPE implies it's a ZIP file then the init file must be included in the file.
-		if (DfuBaseService.MIME_TYPE_ZIP.equals(mimeType)) {
+		if (DfuBaseThread.MIME_TYPE_ZIP.equals(mimeType)) {
 			this.initFileUri = null;
 			this.initFilePath = null;
 			this.initFileResId = 0;

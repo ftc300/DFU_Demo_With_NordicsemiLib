@@ -45,8 +45,8 @@ public class DfuServiceController implements DfuController {
 	public void pause() {
 		if (!mAborted && !mPaused) {
 			mPaused = true;
-			final Intent pauseAction = new Intent(DfuBaseService.BROADCAST_ACTION);
-			pauseAction.putExtra(DfuBaseService.EXTRA_ACTION, DfuBaseService.ACTION_PAUSE);
+			final Intent pauseAction = new Intent(DfuBaseThread.BROADCAST_ACTION);
+			pauseAction.putExtra(DfuBaseThread.EXTRA_ACTION, DfuBaseThread.ACTION_PAUSE);
 			mBroadcastManager.sendBroadcast(pauseAction);
 		}
 	}
@@ -55,8 +55,8 @@ public class DfuServiceController implements DfuController {
 	public void resume() {
 		if (!mAborted && mPaused) {
 			mPaused = false;
-			final Intent pauseAction = new Intent(DfuBaseService.BROADCAST_ACTION);
-			pauseAction.putExtra(DfuBaseService.EXTRA_ACTION, DfuBaseService.ACTION_RESUME);
+			final Intent pauseAction = new Intent(DfuBaseThread.BROADCAST_ACTION);
+			pauseAction.putExtra(DfuBaseThread.EXTRA_ACTION, DfuBaseThread.ACTION_RESUME);
 			mBroadcastManager.sendBroadcast(pauseAction);
 		}
 	}
@@ -66,8 +66,8 @@ public class DfuServiceController implements DfuController {
 		if (!mAborted) {
 			mAborted = true;
 			mPaused = false;
-			final Intent pauseAction = new Intent(DfuBaseService.BROADCAST_ACTION);
-			pauseAction.putExtra(DfuBaseService.EXTRA_ACTION, DfuBaseService.ACTION_ABORT);
+			final Intent pauseAction = new Intent(DfuBaseThread.BROADCAST_ACTION);
+			pauseAction.putExtra(DfuBaseThread.EXTRA_ACTION, DfuBaseThread.ACTION_ABORT);
 			mBroadcastManager.sendBroadcast(pauseAction);
 		}
 	}

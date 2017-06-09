@@ -22,7 +22,7 @@
 
 package no.nordicsemi.android.dfu.internal.exception;
 
-import no.nordicsemi.android.dfu.DfuBaseService;
+import no.nordicsemi.android.dfu.DfuBaseThread;
 
 /**
  * A DFU error occurred on the remote DFU target.
@@ -44,6 +44,6 @@ public class DfuException extends Exception {
 
 	@Override
 	public String getMessage() {
-		return super.getMessage() + " (error " + (mError & ~DfuBaseService.ERROR_CONNECTION_MASK) + ")";
+		return super.getMessage() + " (error " + (mError & ~DfuBaseThread.ERROR_CONNECTION_MASK) + ")";
 	}
 }

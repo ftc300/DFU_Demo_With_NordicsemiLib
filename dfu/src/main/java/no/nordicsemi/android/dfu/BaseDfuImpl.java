@@ -25,10 +25,10 @@ package no.nordicsemi.android.dfu;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
@@ -91,7 +91,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 	 */
 	protected byte[] mReceivedData = null;
 	protected final byte[] mBuffer = new byte[MAX_PACKET_SIZE];
-	protected DfuBaseService mService;
+	protected DfuBaseThread mService;
 	protected DfuProgressInfo mProgressInfo;
 	protected int mImageSizeInBytes;
 	protected int mInitPacketSizeInBytes;
@@ -112,12 +112,12 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 				/*
 				 * This method is called when the DFU Version characteristic has been read.
 				 */
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "Read Response received from " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "Read Response received from " + characteristic.getUuid() + ", value (0x): " + parse(characteristic));
 				mReceivedData = characteristic.getValue();
 				mRequestCompleted = true;
 			} else {
 				loge("Characteristic read error: " + status);
-				mError = DfuBaseService.ERROR_CONNECTION_MASK | status;
+				mError = DfuBaseThread.ERROR_CONNECTION_MASK | status;
 			}
 			notifyLock();
 		}
@@ -126,7 +126,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		public void onDescriptorRead(final BluetoothGatt gatt, final BluetoothGattDescriptor descriptor, final int status) {
 			if (status == BluetoothGatt.GATT_SUCCESS) {
 				if (CLIENT_CHARACTERISTIC_CONFIG.equals(descriptor.getUuid())) {
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "Read Response received from descr." + descriptor.getCharacteristic().getUuid() + ", value (0x): " + parse(descriptor));
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "Read Response received from descr." + descriptor.getCharacteristic().getUuid() + ", value (0x): " + parse(descriptor));
 					if (SERVICE_CHANGED_UUID.equals(descriptor.getCharacteristic().getUuid())) {
 						// We have enabled indications for the Service Changed characteristic
 						mRequestCompleted = true;
@@ -137,7 +137,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 				}
 			} else {
 				loge("Descriptor read error: " + status);
-				mError = DfuBaseService.ERROR_CONNECTION_MASK | status;
+				mError = DfuBaseThread.ERROR_CONNECTION_MASK | status;
 			}
 			notifyLock();
 		}
@@ -146,18 +146,18 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		public void onDescriptorWrite(final BluetoothGatt gatt, final BluetoothGattDescriptor descriptor, final int status) {
 			if (status == BluetoothGatt.GATT_SUCCESS) {
 				if (CLIENT_CHARACTERISTIC_CONFIG.equals(descriptor.getUuid())) {
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "Data written to descr." + descriptor.getCharacteristic().getUuid() + ", value (0x): " + parse(descriptor));
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "Data written to descr." + descriptor.getCharacteristic().getUuid() + ", value (0x): " + parse(descriptor));
 					if (SERVICE_CHANGED_UUID.equals(descriptor.getCharacteristic().getUuid())) {
 						// We have enabled indications for the Service Changed characteristic
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Indications enabled for " + descriptor.getCharacteristic().getUuid());
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Indications enabled for " + descriptor.getCharacteristic().getUuid());
 					} else {
 						// We have enabled notifications for this characteristic
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Notifications enabled for " + descriptor.getCharacteristic().getUuid());
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Notifications enabled for " + descriptor.getCharacteristic().getUuid());
 					}
 				}
 			} else {
 				loge("Descriptor write error: " + status);
-				mError = DfuBaseService.ERROR_CONNECTION_MASK | status;
+				mError = DfuBaseThread.ERROR_CONNECTION_MASK | status;
 			}
 			notifyLock();
 		}
@@ -189,7 +189,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		}
 	};
 
-	/* package */ BaseDfuImpl(final Intent intent, final DfuBaseService service) {
+	/* package */ BaseDfuImpl(Context context,final DfuBaseThread service) {
 		mService = service;
 		mProgressInfo = service.mProgressInfo;
 		mConnected = true; // the device is connected when impl object it created
@@ -225,20 +225,20 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 	}
 
 	@Override
-	public boolean initialize(final Intent intent, final BluetoothGatt gatt, final int fileType, final InputStream firmwareStream, final InputStream initPacketStream) throws DfuException, DeviceDisconnectedException, UploadAbortedException {
+	public boolean initialize(final Context context, final BluetoothGatt gatt, final int fileType, final InputStream firmwareStream, final InputStream initPacketStream) throws DfuException, DeviceDisconnectedException, UploadAbortedException {
 		mGatt = gatt;
 		mFileType = fileType;
 		mFirmwareStream = firmwareStream;
 		mInitPacketStream = initPacketStream;
 
-		final int currentPart = intent.getIntExtra(DfuBaseService.EXTRA_PART_CURRENT, 1);
-		int totalParts = intent.getIntExtra(DfuBaseService.EXTRA_PARTS_TOTAL, 1);
+		final int currentPart = (int) SPManager.get(context,DfuBaseThread.EXTRA_PART_CURRENT, 1);
+		int totalParts = (int) SPManager.get(context,DfuBaseThread.EXTRA_PARTS_TOTAL, 1);
 
 		// Sending App together with SD or BL is not supported. It must be spilt into two parts.
-		if (fileType > DfuBaseService.TYPE_APPLICATION) {
+		if (fileType > DfuBaseThread.TYPE_APPLICATION) {
 			logw("DFU target does not support (SD/BL)+App update, splitting into 2 parts");
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_WARNING, "Sending system components");
-			mFileType &= ~DfuBaseService.TYPE_APPLICATION; // clear application bit
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_WARNING, "Sending system components");
+			mFileType &= ~DfuBaseThread.TYPE_APPLICATION; // clear application bit
 			totalParts = 2;
 
 			// Set new content type in the ZIP Input Stream and update sizes of images
@@ -247,7 +247,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		}
 
 		if (currentPart == 2) {
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_WARNING, "Sending application");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_WARNING, "Sending application");
 		}
 
 		int size;
@@ -288,7 +288,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 					if (!serviceChangedIndicationsEnabled)
 						enableCCCD(serviceChangedCharacteristic, INDICATIONS);
 
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Service Changed indications enabled");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Service Changed indications enabled");
 				}
 			}
 		}
@@ -339,15 +339,15 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 			return;
 
 		logi("Enabling " + debugString + "...");
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Enabling " + debugString + " for " + characteristic.getUuid());
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Enabling " + debugString + " for " + characteristic.getUuid());
 
 		// enable notifications locally
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.setCharacteristicNotification(" + characteristic.getUuid() + ", true)");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.setCharacteristicNotification(" + characteristic.getUuid() + ", true)");
 		gatt.setCharacteristicNotification(characteristic, true);
 
 		// enable notifications on the device
 		descriptor.setValue(type == NOTIFICATIONS ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.writeDescriptor(" + descriptor.getUuid() + (type == NOTIFICATIONS ? ", value=0x01-00)" : ", value=0x02-00)"));
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.writeDescriptor(" + descriptor.getUuid() + (type == NOTIFICATIONS ? ", value=0x01-00)" : ", value=0x02-00)"));
 		gatt.writeDescriptor(descriptor);
 
 		// We have to wait until device receives a response or an error occur
@@ -400,8 +400,8 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		mError = 0;
 
 		logi("Reading Service Changed CCCD value...");
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Reading Service Changed CCCD value...");
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.readDescriptor(" + descriptor.getUuid() + ")");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Reading Service Changed CCCD value...");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.readDescriptor(" + descriptor.getUuid() + ")");
 		gatt.readDescriptor(descriptor);
 
 		// We have to wait until device receives a response or an error occur
@@ -451,8 +451,8 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 
 		characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
 		characteristic.setValue(value);
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Writing to characteristic " + characteristic.getUuid());
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.writeCharacteristic(" + characteristic.getUuid() + ")");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Writing to characteristic " + characteristic.getUuid());
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.writeCharacteristic(" + characteristic.getUuid() + ")");
 		mGatt.writeCharacteristic(characteristic);
 
 		// We have to wait for confirmation
@@ -484,9 +484,9 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		boolean result;
 		mRequestCompleted = false;
 
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Starting pairing...");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Starting pairing...");
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.getDevice().createBond()");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.getDevice().createBond()");
 			result = device.createBond();
 		} else {
 			result = createBondApi18(device);
@@ -517,7 +517,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		try {
 			final Method createBond = device.getClass().getMethod("createBond");
 			if (createBond != null) {
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.getDevice().createBond() (hidden)");
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.getDevice().createBond() (hidden)");
 				return (Boolean) createBond.invoke(device);
 			}
 		} catch (final Exception e) {
@@ -536,7 +536,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 		if (device.getBondState() == BluetoothDevice.BOND_NONE)
 			return true;
 
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Removing bond information...");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Removing bond information...");
 		boolean result = false;
 		/*
 		 * There is a removeBond() method in BluetoothDevice class but for now it's hidden. We will call it using reflections.
@@ -545,7 +545,7 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 			final Method removeBond = device.getClass().getMethod("removeBond");
 			if (removeBond != null) {
 				mRequestCompleted = false;
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_DEBUG, "gatt.getDevice().removeBond() (hidden)");
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_DEBUG, "gatt.getDevice().removeBond() (hidden)");
 				result = (Boolean) removeBond.invoke(device);
 
 				// We have to wait until device is unbounded
@@ -611,19 +611,19 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 	protected void restartService(final Intent intent, final boolean scanForBootloader) {
 		String newAddress = null;
 		if (scanForBootloader) {
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_VERBOSE, "Scanning for the DFU Bootloader...");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_VERBOSE, "Scanning for the DFU Bootloader...");
 			newAddress = BootloaderScannerFactory.getScanner().searchFor(mGatt.getDevice().getAddress());
 			logi("Scanning for new address finished with: " + newAddress);
 			if (newAddress != null)
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "DFU Bootloader found with address " + newAddress);
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "DFU Bootloader found with address " + newAddress);
 			else {
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "DFU Bootloader not found. Trying the same address...");
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "DFU Bootloader not found. Trying the same address...");
 			}
 		}
 
 		if (newAddress != null)
-			intent.putExtra(DfuBaseService.EXTRA_DEVICE_ADDRESS, newAddress);
-		mService.startService(intent);
+			intent.putExtra(DfuBaseThread.EXTRA_DEVICE_ADDRESS, newAddress);
+//		mService.startService(intent);
 	}
 
 	protected String parse(final byte[] data) {
@@ -654,12 +654,12 @@ import no.nordicsemi.android.dfu.internal.scanner.BootloaderScannerFactory;
 	}
 
 	void logw(final String message) {
-		if (DfuBaseService.DEBUG)
+		if (DfuBaseThread.DEBUG)
 			Log.w(TAG, message);
 	}
 
 	void logi(final String message) {
-		if (DfuBaseService.DEBUG)
+		if (DfuBaseThread.DEBUG)
 			Log.i(TAG, message);
 	}
 }

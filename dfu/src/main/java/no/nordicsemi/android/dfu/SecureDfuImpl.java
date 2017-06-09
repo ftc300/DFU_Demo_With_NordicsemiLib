@@ -25,7 +25,7 @@ package no.nordicsemi.android.dfu;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
-import android.content.Intent;
+import android.content.Context;
 import android.os.SystemClock;
 
 import java.io.IOException;
@@ -84,7 +84,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 		public void onCharacteristicChanged(final BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) {
 			if (characteristic.getValue() == null || characteristic.getValue().length < 3) {
 				loge("Empty response: " + parse(characteristic));
-				mError = DfuBaseService.ERROR_INVALID_RESPONSE;
+				mError = DfuBaseThread.ERROR_INVALID_RESPONSE;
 				notifyLock();
 				return;
 			}
@@ -119,18 +119,18 @@ import no.nordicsemi.android.error.SecureDfuError;
 				}
 			} else {
 				loge("Invalid response: " + parse(characteristic));
-				mError = DfuBaseService.ERROR_INVALID_RESPONSE;
+				mError = DfuBaseThread.ERROR_INVALID_RESPONSE;
 			}
 			notifyLock();
 		}
 	}
 
-	SecureDfuImpl(final Intent intent, final DfuBaseService service) {
-		super(intent, service);
+	SecureDfuImpl(Context context,final DfuBaseThread service) {
+		super(context,service);
 	}
 
 	@Override
-	public boolean isClientCompatible(final Intent intent, final BluetoothGatt gatt) {
+	public boolean isClientCompatible(final Context context, final BluetoothGatt gatt) {
 		final BluetoothGattService dfuService = gatt.getService(DFU_SERVICE_UUID);
 		if (dfuService == null)
 			return false;
@@ -140,14 +140,14 @@ import no.nordicsemi.android.error.SecureDfuError;
 	}
 
 	@Override
-	public boolean initialize(final Intent intent, final BluetoothGatt gatt, final int fileType, final InputStream firmwareStream, final InputStream initPacketStream) throws DfuException, DeviceDisconnectedException, UploadAbortedException {
+	public boolean initialize(final Context context, final BluetoothGatt gatt, final int fileType, final InputStream firmwareStream, final InputStream initPacketStream) throws DfuException, DeviceDisconnectedException, UploadAbortedException {
 		if (initPacketStream == null) {
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_ERROR, "The Init packet is required by this version DFU Bootloader");
-			mService.terminateConnection(gatt, DfuBaseService.ERROR_INIT_PACKET_REQUIRED);
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_ERROR, "The Init packet is required by this version DFU Bootloader");
+			mService.terminateConnection(gatt, DfuBaseThread.ERROR_INIT_PACKET_REQUIRED);
 			return false;
 		}
 
-		return super.initialize(intent, gatt, fileType, firmwareStream, initPacketStream);
+		return super.initialize(context, gatt, fileType, firmwareStream, initPacketStream);
 	}
 
 	@Override
@@ -171,9 +171,9 @@ import no.nordicsemi.android.error.SecureDfuError;
 	}
 
 	@Override
-	public void performDfu(final Intent intent) throws DfuException, DeviceDisconnectedException, UploadAbortedException {
+	public void performDfu(final Context context) throws DfuException, DeviceDisconnectedException, UploadAbortedException {
 		logw("Secure DFU bootloader found");
-		mProgressInfo.setProgress(DfuBaseService.PROGRESS_STARTING);
+		mProgressInfo.setProgress(DfuBaseThread.PROGRESS_STARTING);
 
 		// Add one second delay to avoid the traffic jam before the DFU mode is enabled
 		// Related:
@@ -187,7 +187,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 		try {
 			// Enable notifications
 			enableCCCD(mControlPointCharacteristic, NOTIFICATIONS);
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Notifications enabled");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Notifications enabled");
 
 			// Wait a second here before going further
 			// Related:
@@ -199,31 +199,31 @@ import no.nordicsemi.android.error.SecureDfuError;
 			sendFirmware(gatt);
 
 			// The device will reset so we don't have to send Disconnect signal.
-			mProgressInfo.setProgress(DfuBaseService.PROGRESS_DISCONNECTING);
+			mProgressInfo.setProgress(DfuBaseThread.PROGRESS_DISCONNECTING);
 			mService.waitUntilDisconnected();
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_INFO, "Disconnected by the remote device");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_INFO, "Disconnected by the remote device");
 
 			// We are ready with DFU, the device is disconnected, let's close it and finalize the operation.
-			finalize(intent, false);
+			finalize(context, false);
 		} catch (final UploadAbortedException e) {
 			// In secure DFU there is currently not possible to reset the device to application mode, so... do nothing
-			// The connection will be terminated in the DfuBaseService
+			// The connection will be terminated in the DfuBaseThread
 			throw e;
 		} catch (final UnknownResponseException e) {
-			final int error = DfuBaseService.ERROR_INVALID_RESPONSE;
+			final int error = DfuBaseThread.ERROR_INVALID_RESPONSE;
 			loge(e.getMessage());
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_ERROR, e.getMessage());
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_ERROR, e.getMessage());
 			mService.terminateConnection(gatt, error);
 		} catch (final RemoteDfuException e) {
-			final int error = DfuBaseService.ERROR_REMOTE_MASK | e.getErrorNumber();
+			final int error = DfuBaseThread.ERROR_REMOTE_MASK | e.getErrorNumber();
 			loge(e.getMessage());
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_ERROR, String.format("Remote DFU error: %s", SecureDfuError.parse(error)));
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_ERROR, String.format("Remote DFU error: %s", SecureDfuError.parse(error)));
 
 			// For the Extended Error more details can be obtained on some devices.
 			if (e instanceof RemoteDfuExtendedErrorException) {
 				final RemoteDfuExtendedErrorException ee = (RemoteDfuExtendedErrorException) e;
 				logi("Extended Error details: " + SecureDfuError.parseExtendedError(ee.getExtendedErrorNumber()));
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_ERROR, "Details: " + SecureDfuError.parseExtendedError(ee.getExtendedErrorNumber()) + " (Code = " + ee.getExtendedErrorNumber() + ")");
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_ERROR, "Details: " + SecureDfuError.parseExtendedError(ee.getExtendedErrorNumber()) + " (Code = " + ee.getExtendedErrorNumber() + ")");
 			}
 			mService.terminateConnection(gatt, error);
 		}
@@ -260,7 +260,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 		// a command saved from a previous connection is returned.
 		logi("Setting object to Command (Op Code = 6, Type = 1)");
 		final ObjectInfo info = selectObject(OBJECT_COMMAND);
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Command object info received (Max size = %d, Offset = %d, CRC = %08X)", info.maxSize, info.offset, info.CRC32));
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Command object info received (Max size = %d, Offset = %d, CRC = %08X)", info.maxSize, info.offset, info.CRC32));
 		if (mInitPacketSizeInBytes > info.maxSize) {
 			// Ignore this. DFU target will send an error if init packet is too large after sending the 'Create object' command
 		}
@@ -285,11 +285,11 @@ import no.nordicsemi.android.error.SecureDfuError;
 						// There is no need to send it again. We may try to resume sending data.
 						logi("-> Whole Init packet was sent before");
 						skipSendingInitPacket = true;
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Received CRC match Init packet");
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Received CRC match Init packet");
 					} else {
 						logi("-> " + info.offset + " bytes of Init packet were sent before");
 						resumeSendingInitPacket = true;
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Resuming sending Init packet...");
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Resuming sending Init packet...");
 					}
 				} else {
 					// A different Init packet was sent before, or the error occurred while sending.
@@ -305,7 +305,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 					crc32.reset();
 				} catch (final IOException e1) {
 					loge("Error while resetting the init packet stream", e1);
-					mService.terminateConnection(gatt, DfuBaseService.ERROR_FILE_IO_EXCEPTION);
+					mService.terminateConnection(gatt, DfuBaseThread.ERROR_FILE_IO_EXCEPTION);
 					return;
 				}
 			}
@@ -316,25 +316,25 @@ import no.nordicsemi.android.error.SecureDfuError;
 			// This value might have been stored on the device, so we have to explicitly disable PRNs.
 			logi("Disabling Packet Receipt Notifications (Op Code = 2, Value = 0)");
 			setPacketReceiptNotifications(0);
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Packet Receipt Notif disabled (Op Code = 2, Value = 0)");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Packet Receipt Notif disabled (Op Code = 2, Value = 0)");
 
 			for (int attempt = 1; attempt <= MAX_ATTEMPTS;) {
 				if (!resumeSendingInitPacket) {
 					// Create the Init object
 					logi("Creating Init packet object (Op Code = 1, Type = 1, Size = " + mInitPacketSizeInBytes + ")");
 					writeCreateRequest(OBJECT_COMMAND, mInitPacketSizeInBytes);
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Command object created");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Command object created");
 				}
 				// Write Init data to the Packet Characteristic
 				logi("Sending " + (mInitPacketSizeInBytes - info.offset) + " bytes of init packet...");
 				writeInitData(mPacketCharacteristic, crc32);
 				final int crc = (int) (crc32.getValue() & 0xFFFFFFFFL);
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Command object sent (CRC = %08X)", crc));
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Command object sent (CRC = %08X)", crc));
 
 				// Calculate Checksum
 				logi("Sending Calculate Checksum command (Op Code = 3)");
 				checksum = readChecksum();
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Checksum received (Offset = %d, CRC = %08X)", checksum.offset, checksum.CRC32));
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Checksum received (Offset = %d, CRC = %08X)", checksum.offset, checksum.CRC32));
 				logi(String.format(Locale.US, "Checksum received (Offset = %d, CRC = %08X)", checksum.offset, checksum.CRC32));
 
 				if (crc == checksum.CRC32) {
@@ -344,7 +344,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 					if (attempt < MAX_ATTEMPTS) {
 						attempt++;
 						logi("CRC does not match! Retrying...(" + attempt + "/" + MAX_ATTEMPTS + ")");
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_WARNING, "CRC does not match! Retrying...(" + attempt + "/" + MAX_ATTEMPTS + ")");
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_WARNING, "CRC does not match! Retrying...(" + attempt + "/" + MAX_ATTEMPTS + ")");
 						try {
 							// Go back to the beginning, we will send the whole Init packet again
 							resumeSendingInitPacket = false;
@@ -354,13 +354,13 @@ import no.nordicsemi.android.error.SecureDfuError;
 							crc32.reset();
 						} catch (final IOException e) {
 							loge("Error while resetting the init packet stream", e);
-							mService.terminateConnection(gatt, DfuBaseService.ERROR_FILE_IO_EXCEPTION);
+							mService.terminateConnection(gatt, DfuBaseThread.ERROR_FILE_IO_EXCEPTION);
 							return;
 						}
 					} else {
 						loge("CRC does not match!");
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_ERROR, "CRC does not match!");
-						mService.terminateConnection(gatt, DfuBaseService.ERROR_CRC_ERROR);
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_ERROR, "CRC does not match!");
+						mService.terminateConnection(gatt, DfuBaseThread.ERROR_CRC_ERROR);
 						return;
 					}
 				}
@@ -370,7 +370,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 		// Execute Init packet. It's better to execute it twice than not execute at all...
 		logi("Executing init packet (Op Code = 4)");
 		writeExecute();
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Command object executed");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Command object executed");
 	}
 
 	/**
@@ -396,14 +396,14 @@ import no.nordicsemi.android.error.SecureDfuError;
 		if (numberOfPacketsBeforeNotification > 0) {
 			logi("Sending the number of packets before notifications (Op Code = 2, Value = " + numberOfPacketsBeforeNotification + ")");
 			setPacketReceiptNotifications(numberOfPacketsBeforeNotification);
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Packet Receipt Notif Req (Op Code = 2) sent (Value = " + numberOfPacketsBeforeNotification + ")");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Packet Receipt Notif Req (Op Code = 2) sent (Value = " + numberOfPacketsBeforeNotification + ")");
 		}
 
 		// We are ready to start sending the new firmware.
 
 		logi("Setting object to Data (Op Code = 6, Type = 1)");
 		final ObjectInfo info = selectObject(OBJECT_DATA);
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Data object info received (Max size = %d, Offset = %d, CRC = %08X)", info.maxSize, info.offset, info.CRC32));
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Data object info received (Max size = %d, Offset = %d, CRC = %08X)", info.maxSize, info.offset, info.CRC32));
 		mProgressInfo.setMaxObjectSizeInBytes(info.maxSize);
 
 		// Number of chunks in which the data will be sent
@@ -441,18 +441,18 @@ import no.nordicsemi.android.error.SecureDfuError;
 				if (crc == info.CRC32) {
 					mProgressInfo.setBytesSent(info.offset);
 					mProgressInfo.setBytesReceived(info.offset);
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, info.offset + " bytes of data sent before, CRC match");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, info.offset + " bytes of data sent before, CRC match");
 
 					// If the whole page was sent and CRC match, we have to make sure it was executed
 					if (bytesSentNotExecuted == info.maxSize && info.offset < mImageSizeInBytes) {
 						logi("Executing data object (Op Code = 4)");
 						writeExecute();
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Data object executed");
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Data object executed");
 					} else {
 						resumeSendingData = true;
 					}
 				} else {
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_WARNING, info.offset + " bytes sent before, CRC does not match");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_WARNING, info.offset + " bytes sent before, CRC does not match");
 					// The CRC of the current object is not correct. If there was another Data object sent before, its CRC must have been correct,
 					// as it has been executed. Either way, we have to create the current object again.
 					mProgressInfo.setBytesSent(bytesSentAndExecuted);
@@ -460,11 +460,11 @@ import no.nordicsemi.android.error.SecureDfuError;
 					info.offset -= bytesSentNotExecuted;
 					info.CRC32 = 0; // invalidate
 					mFirmwareStream.reset();
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Resuming from byte " + info.offset + "...");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Resuming from byte " + info.offset + "...");
 				}
 			} catch (final IOException e) {
 				loge("Error while reading firmware stream", e);
-				mService.terminateConnection(gatt, DfuBaseService.ERROR_FILE_IO_EXCEPTION);
+				mService.terminateConnection(gatt, DfuBaseThread.ERROR_FILE_IO_EXCEPTION);
 				return;
 			}
 		} else {
@@ -482,10 +482,10 @@ import no.nordicsemi.android.error.SecureDfuError;
 					// Create the Data object
 					logi("Creating Data object (Op Code = 1, Type = 2, Size = " + mProgressInfo.getAvailableObjectSizeIsBytes() + ") (" + (currentChunk + 1) + "/" + chunkCount + ")");
 					writeCreateRequest(OBJECT_DATA, mProgressInfo.getAvailableObjectSizeIsBytes());
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Data object (" + (currentChunk + 1) + "/" + chunkCount + ") created");
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Uploading firmware...");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Data object (" + (currentChunk + 1) + "/" + chunkCount + ") created");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Uploading firmware...");
 				} else {
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Resuming uploading firmware...");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Resuming uploading firmware...");
 					resumeSendingData = false;
 				}
 
@@ -501,7 +501,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 				// Calculate Checksum
 				logi("Sending Calculate Checksum command (Op Code = 3)");
 				final ObjectChecksum checksum = readChecksum();
-				mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Checksum received (Offset = %d, CRC = %08X)", checksum.offset, checksum.CRC32));
+				mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, String.format(Locale.US, "Checksum received (Offset = %d, CRC = %08X)", checksum.offset, checksum.CRC32));
 				logi(String.format(Locale.US, "Checksum received (Offset = %d, CRC = %08X)", checksum.offset, checksum.CRC32));
 
 				// Calculate the CRC32
@@ -510,7 +510,7 @@ import no.nordicsemi.android.error.SecureDfuError;
 					// Execute Init packet
 					logi("Executing data object (Op Code = 4)");
 					writeExecute();
-					mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Data object executed");
+					mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Data object executed");
 
 					// Increment iterator
 					currentChunk++;
@@ -523,20 +523,20 @@ import no.nordicsemi.android.error.SecureDfuError;
 						attempt++;
 						crcFailMessage += String.format(Locale.US, " Retrying...(%d/%d)", attempt, MAX_ATTEMPTS);
 						logi(crcFailMessage);
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_WARNING, crcFailMessage);
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_WARNING, crcFailMessage);
 						try {
 							// Reset the CRC and file pointer back to the previous mark() point after completion of the last successful packet.
 							mFirmwareStream.reset();
 							mProgressInfo.setBytesSent(checksum.offset - info.maxSize);
 						} catch (final IOException e) {
 							loge("Error while resetting the firmware stream", e);
-							mService.terminateConnection(gatt, DfuBaseService.ERROR_FILE_IO_EXCEPTION);
+							mService.terminateConnection(gatt, DfuBaseThread.ERROR_FILE_IO_EXCEPTION);
 							return;
 						}
 					} else {
 						loge(crcFailMessage);
-						mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_ERROR, crcFailMessage);
-						mService.terminateConnection(gatt, DfuBaseService.ERROR_CRC_ERROR);
+						mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_ERROR, crcFailMessage);
+						mService.terminateConnection(gatt, DfuBaseThread.ERROR_CRC_ERROR);
 						return;
 					}
 				}
@@ -545,12 +545,12 @@ import no.nordicsemi.android.error.SecureDfuError;
 			// Looks as if the whole file was sent correctly but has not been executed
 			logi("Executing data object (Op Code = 4)");
 			writeExecute();
-			mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Data object executed");
+			mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Data object executed");
 		}
 
 		final long endTime = SystemClock.elapsedRealtime();
 		logi("Transfer of " + (mProgressInfo.getBytesSent() - info.offset) + " bytes has taken " + (endTime - startTime) + " ms");
-		mService.sendLogBroadcast(DfuBaseService.LOG_LEVEL_APPLICATION, "Upload completed in " + (endTime - startTime) + " ms");
+		mService.sendLogBroadcast(DfuBaseThread.LOG_LEVEL_APPLICATION, "Upload completed in " + (endTime - startTime) + " ms");
 	}
 
 	/**

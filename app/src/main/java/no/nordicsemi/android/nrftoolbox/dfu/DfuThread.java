@@ -20,24 +20,30 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package no.nordicsemi.android.nrftoolbox.dfusrc.dfu.internal.manifest;
+package no.nordicsemi.android.nrftoolbox.dfu;
 
-import com.google.gson.annotations.SerializedName;
+import android.app.Activity;
 
-public class FileInfo {
-	@SerializedName("bin_file") protected String binFile;
-	@SerializedName("dat_file") protected String datFile;
-	@SerializedName("init_packet_data") protected InitPacketData initPacketData;
+import no.nordicsemi.android.dfu.DfuBaseThread;
 
-	public String getBinFileName() {
-		return binFile;
+public class DfuThread extends DfuBaseThread {
+
+	@Override
+	protected Class<? extends Activity> getNotificationTarget() {
+		/*
+		 * As a target activity the NotificationActivity is returned, not the MainActivity. This is because the notification must create a new task:
+		 * 
+		 * intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		 * 
+		 * when user press it. Using NotificationActivity we can check whether the new activity is a root activity (that means no other activity was open before)
+		 * or that there is other activity already open. In the later case the notificationActivity will just be closed. System will restore the previous activity.
+		 * However if the application has been closed during upload and user click the notification a NotificationActivity will be launched as a root activity.
+		 * It will create and start the main activity and terminate itself.
+		 * 
+		 * This method may be used to restore the target activity in case the application was closed or is open. It may also be used to recreate an activity
+		 * history (see NotificationActivity).
+		 */
+		return NotificationActivity.class;
 	}
 
-	public String getDatFileName() {
-		return datFile;
-	}
-
-	public InitPacketData getInitPacketData() {
-		return initPacketData;
-	}
 }

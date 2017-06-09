@@ -71,7 +71,7 @@ public class MyDfuAct extends Activity {
                     mTextUploading.setVisibility(View.INVISIBLE);
                     // if this activity is still open and upload process was completed, cancel the notification
                     final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                    manager.cancel(DfuService.NOTIFICATION_ID);
+                    manager.cancel(DfuThread.NOTIFICATION_ID);
                 }
             }, 200);
         }
@@ -87,7 +87,7 @@ public class MyDfuAct extends Activity {
 //                    onTransferCompleted();
                     // if this activity is still open and upload process was completed, cancel the notification
                     final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                    manager.cancel(DfuService.NOTIFICATION_ID);
+                    manager.cancel(DfuThread.NOTIFICATION_ID);
                 }
             }, 200);
         }
@@ -106,13 +106,13 @@ public class MyDfuAct extends Activity {
         @Override
         public void onError(final String deviceAddress, final int error, final int errorType, final String message) {
 //            showErrorMessage(message);
-            // We have to wait a bit before canceling notification. This is called before DfuService creates the last notification.
+            // We have to wait a bit before canceling notification. This is called before DfuThread creates the last notification.
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     // if this activity is still open and upload process was completed, cancel the notification
                     final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                    manager.cancel(DfuService.NOTIFICATION_ID);
+                    manager.cancel(DfuThread.NOTIFICATION_ID);
                 }
             }, 200);
         }
@@ -144,10 +144,11 @@ public class MyDfuAct extends Activity {
      */
     public void onCDUploadClicked(final View view) {
         showProgressBar();
-        final DfuServiceInitiator starter = new DfuServiceInitiator("C1:3C:F7:8F:79:90")
-                .setKeepBond(false);
+        final DfuServiceInitiator starter = new DfuServiceInitiator("C1:3C:F7:8F:79:90").setKeepBond(false);
         starter.setZip(R.raw.r02_update_wh0418);
-        starter.start(this, DfuService.class);
+        DfuThread thread = new DfuThread();
+        thread.context  = this;
+        starter.start(this, thread);
     }
 
 
@@ -156,8 +157,8 @@ public class MyDfuAct extends Activity {
      */
     public void onCancelClicked(final View view) {
         final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(this);
-        final Intent pauseAction = new Intent(DfuService.BROADCAST_ACTION);
-        pauseAction.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
+        final Intent pauseAction = new Intent(DfuThread.BROADCAST_ACTION);
+        pauseAction.putExtra(DfuThread.EXTRA_ACTION, DfuThread.ACTION_ABORT);
         manager.sendBroadcast(pauseAction);
         mProgressBar.setIndeterminate(true);
         mTextUploading.setText(R.string.dfu_status_aborting);

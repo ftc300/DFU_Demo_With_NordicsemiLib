@@ -23,7 +23,7 @@
 package no.nordicsemi.android.dfu;
 
 import android.bluetooth.BluetoothGatt;
-import android.content.Intent;
+import android.content.Context;
 
 import java.io.InputStream;
 
@@ -34,16 +34,16 @@ import no.nordicsemi.android.dfu.internal.exception.UploadAbortedException;
 /* package */ interface DfuService extends DfuCallback {
 
 	/** This method must return true if the device is compatible with this DFU implementation, false otherwise. */
-	boolean isClientCompatible(final Intent intent, final BluetoothGatt gatt) throws DfuException, DeviceDisconnectedException, UploadAbortedException;
+	boolean isClientCompatible(final Context context, final BluetoothGatt gatt) throws DfuException, DeviceDisconnectedException, UploadAbortedException;
 
 	/**
 	 * Initializes the DFU implementation and does some initial setting up.
 	 * @return true if initialization was successful and the DFU process may begin, false to finish teh DFU service
 	 */
-	boolean initialize(final Intent intent, final BluetoothGatt gatt, final int fileType, final InputStream firmwareStream, final InputStream initPacketStream) throws DfuException, DeviceDisconnectedException, UploadAbortedException;
+	boolean initialize(final Context context, final BluetoothGatt gatt, final int fileType, final InputStream firmwareStream, final InputStream initPacketStream) throws DfuException, DeviceDisconnectedException, UploadAbortedException;
 
 	/** Performs the DFU process. */
-	void performDfu(final Intent intent) throws DfuException, DeviceDisconnectedException, UploadAbortedException;
+	void performDfu(final Context context) throws DfuException, DeviceDisconnectedException, UploadAbortedException;
 
 	/** Releases the service. */
 	void release();

@@ -22,9 +22,6 @@
 
 package no.nordicsemi.android.dfu;
 
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -88,7 +85,7 @@ public class DfuServiceListenerHelper {
 
 		@Override
 		public void onReceive(final Context context, final Intent intent) {
-			final String address = intent.getStringExtra(DfuBaseService.EXTRA_DEVICE_ADDRESS);
+			final String address = intent.getStringExtra(DfuBaseThread.EXTRA_DEVICE_ADDRESS);
 
 			// Find proper listeners
 			final DfuLogListener globalListener = mGlobalLogListener;
@@ -97,8 +94,8 @@ public class DfuServiceListenerHelper {
 			if (globalListener == null && deviceListener == null)
 				return;
 
-			final int level = intent.getIntExtra(DfuBaseService.EXTRA_LOG_LEVEL, 0);
-			final String message = intent.getStringExtra(DfuBaseService.EXTRA_LOG_MESSAGE);
+			final int level = intent.getIntExtra(DfuBaseThread.EXTRA_LOG_LEVEL, 0);
+			final String message = intent.getStringExtra(DfuBaseThread.EXTRA_LOG_MESSAGE);
 
 			if (globalListener != null)
 				globalListener.onLogEvent(address, level, message);
@@ -145,7 +142,7 @@ public class DfuServiceListenerHelper {
 
 		@Override
 		public void onReceive(final Context context, final Intent intent) {
-			final String address = intent.getStringExtra(DfuBaseService.EXTRA_DEVICE_ADDRESS);
+			final String address = intent.getStringExtra(DfuBaseThread.EXTRA_DEVICE_ADDRESS);
 
 			// Find proper listeners
 			final DfuProgressListener globalListener = mGlobalProgressListener;
@@ -157,21 +154,21 @@ public class DfuServiceListenerHelper {
 			final String action = intent.getAction();
 
 			switch (action) {
-				case DfuBaseService.BROADCAST_PROGRESS: {
-					final int progress = intent.getIntExtra(DfuBaseService.EXTRA_DATA, 0);
-					final float speed = intent.getFloatExtra(DfuBaseService.EXTRA_SPEED_B_PER_MS, 0.0f);
-					final float avgSpeed = intent.getFloatExtra(DfuBaseService.EXTRA_AVG_SPEED_B_PER_MS, 0.0f);
-					final int currentPart = intent.getIntExtra(DfuBaseService.EXTRA_PART_CURRENT, 0);
-					final int partsTotal = intent.getIntExtra(DfuBaseService.EXTRA_PARTS_TOTAL, 0);
+				case DfuBaseThread.BROADCAST_PROGRESS: {
+					final int progress = intent.getIntExtra(DfuBaseThread.EXTRA_DATA, 0);
+					final float speed = intent.getFloatExtra(DfuBaseThread.EXTRA_SPEED_B_PER_MS, 0.0f);
+					final float avgSpeed = intent.getFloatExtra(DfuBaseThread.EXTRA_AVG_SPEED_B_PER_MS, 0.0f);
+					final int currentPart = intent.getIntExtra(DfuBaseThread.EXTRA_PART_CURRENT, 0);
+					final int partsTotal = intent.getIntExtra(DfuBaseThread.EXTRA_PARTS_TOTAL, 0);
 
 					switch (progress) {
-						case DfuBaseService.PROGRESS_CONNECTING:
+						case DfuBaseThread.PROGRESS_CONNECTING:
 							if (globalListener != null)
 								globalListener.onDeviceConnecting(address);
 							if (deviceListener != null)
 								deviceListener.onDeviceConnecting(address);
 							break;
-						case DfuBaseService.PROGRESS_STARTING:
+						case DfuBaseThread.PROGRESS_STARTING:
 							if (globalListener != null) {
 								globalListener.onDeviceConnected(address);
 								globalListener.onDfuProcessStarting(address);
@@ -181,25 +178,25 @@ public class DfuServiceListenerHelper {
 								deviceListener.onDfuProcessStarting(address);
 							}
 							break;
-						case DfuBaseService.PROGRESS_ENABLING_DFU_MODE:
+						case DfuBaseThread.PROGRESS_ENABLING_DFU_MODE:
 							if (globalListener != null)
 								globalListener.onEnablingDfuMode(address);
 							if (deviceListener != null)
 								deviceListener.onEnablingDfuMode(address);
 							break;
-						case DfuBaseService.PROGRESS_VALIDATING:
+						case DfuBaseThread.PROGRESS_VALIDATING:
 							if (globalListener != null)
 								globalListener.onFirmwareValidating(address);
 							if (deviceListener != null)
 								deviceListener.onFirmwareValidating(address);
 							break;
-						case DfuBaseService.PROGRESS_DISCONNECTING:
+						case DfuBaseThread.PROGRESS_DISCONNECTING:
 							if (globalListener != null)
 								globalListener.onDeviceDisconnecting(address);
 							if (deviceListener != null)
 								deviceListener.onDeviceDisconnecting(address);
 							break;
-						case DfuBaseService.PROGRESS_COMPLETED:
+						case DfuBaseThread.PROGRESS_COMPLETED:
 							if (globalListener != null) {
 								globalListener.onDeviceDisconnected(address);
 								globalListener.onDfuCompleted(address);
@@ -209,7 +206,7 @@ public class DfuServiceListenerHelper {
 								deviceListener.onDfuCompleted(address);
 							}
 							break;
-						case DfuBaseService.PROGRESS_ABORTED:
+						case DfuBaseThread.PROGRESS_ABORTED:
 							if (globalListener != null) {
 								globalListener.onDeviceDisconnected(address);
 								globalListener.onDfuAborted(address);
@@ -235,16 +232,16 @@ public class DfuServiceListenerHelper {
 
 					break;
 				}
-				case DfuBaseService.BROADCAST_ERROR: {
-					final int error = intent.getIntExtra(DfuBaseService.EXTRA_DATA, 0);
-					final int errorType = intent.getIntExtra(DfuBaseService.EXTRA_ERROR_TYPE, 0);
+				case DfuBaseThread.BROADCAST_ERROR: {
+					final int error = intent.getIntExtra(DfuBaseThread.EXTRA_DATA, 0);
+					final int errorType = intent.getIntExtra(DfuBaseThread.EXTRA_ERROR_TYPE, 0);
 
 					if (globalListener != null)
 						globalListener.onDeviceDisconnected(address);
 					if (deviceListener != null)
 						deviceListener.onDeviceDisconnected(address);
 					switch (errorType) {
-						case DfuBaseService.ERROR_TYPE_COMMUNICATION_STATE:
+						case DfuBaseThread.ERROR_TYPE_COMMUNICATION_STATE:
 							if (globalListener != null)
 								globalListener.onError(address, error, errorType, GattError.parseConnectionError(error));
 							if (deviceListener != null)
@@ -272,8 +269,8 @@ public class DfuServiceListenerHelper {
 			mProgressBroadcastReceiver = new ProgressBroadcastsReceiver();
 
 			final IntentFilter filter = new IntentFilter();
-			filter.addAction(DfuBaseService.BROADCAST_PROGRESS);
-			filter.addAction(DfuBaseService.BROADCAST_ERROR);
+			filter.addAction(DfuBaseThread.BROADCAST_PROGRESS);
+			filter.addAction(DfuBaseThread.BROADCAST_ERROR);
 			LocalBroadcastManager.getInstance(context).registerReceiver(mProgressBroadcastReceiver, filter);
 		}
 		mProgressBroadcastReceiver.setProgressListener(listener);
@@ -290,8 +287,8 @@ public class DfuServiceListenerHelper {
 			mProgressBroadcastReceiver = new ProgressBroadcastsReceiver();
 
 			final IntentFilter filter = new IntentFilter();
-			filter.addAction(DfuBaseService.BROADCAST_PROGRESS);
-			filter.addAction(DfuBaseService.BROADCAST_ERROR);
+			filter.addAction(DfuBaseThread.BROADCAST_PROGRESS);
+			filter.addAction(DfuBaseThread.BROADCAST_ERROR);
 			LocalBroadcastManager.getInstance(context).registerReceiver(mProgressBroadcastReceiver, filter);
 		}
 		mProgressBroadcastReceiver.setProgressListener(deviceAddress, listener);
@@ -323,7 +320,7 @@ public class DfuServiceListenerHelper {
 			mLogBroadcastReceiver = new LogBroadcastReceiver();
 
 			final IntentFilter filter = new IntentFilter();
-			filter.addAction(DfuBaseService.BROADCAST_LOG);
+			filter.addAction(DfuBaseThread.BROADCAST_LOG);
 			LocalBroadcastManager.getInstance(context).registerReceiver(mLogBroadcastReceiver, filter);
 		}
 		mLogBroadcastReceiver.setLogListener(listener);
@@ -340,7 +337,7 @@ public class DfuServiceListenerHelper {
 			mLogBroadcastReceiver = new LogBroadcastReceiver();
 
 			final IntentFilter filter = new IntentFilter();
-			filter.addAction(DfuBaseService.BROADCAST_LOG);
+			filter.addAction(DfuBaseThread.BROADCAST_LOG);
 			LocalBroadcastManager.getInstance(context).registerReceiver(mLogBroadcastReceiver, filter);
 		}
 		mLogBroadcastReceiver.setLogListener(deviceAddress, listener);

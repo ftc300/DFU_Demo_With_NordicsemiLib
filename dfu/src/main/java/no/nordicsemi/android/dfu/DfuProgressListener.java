@@ -105,8 +105,8 @@ public interface DfuProgressListener {
 	 * Method called when an error occur.
 	 * @param deviceAddress the target device address
 	 * @param error error number
-	 * @param errorType the error type, one of {@link DfuBaseService#ERROR_TYPE_COMMUNICATION_STATE}, {@link DfuBaseService#ERROR_TYPE_COMMUNICATION},
-	 * 			{@link DfuBaseService#ERROR_TYPE_DFU_REMOTE}, {@link DfuBaseService#ERROR_TYPE_OTHER}.
+	 * @param errorType the error type, one of {@link DfuBaseThread#ERROR_TYPE_COMMUNICATION_STATE}, {@link DfuBaseThread#ERROR_TYPE_COMMUNICATION},
+	 * 			{@link DfuBaseThread#ERROR_TYPE_DFU_REMOTE}, {@link DfuBaseThread#ERROR_TYPE_OTHER}.
 	 * @param message the error message
 	 */
 	void onError(final String deviceAddress, final int error, final int errorType, final String message);

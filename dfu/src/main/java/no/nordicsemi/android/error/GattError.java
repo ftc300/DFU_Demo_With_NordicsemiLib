@@ -24,7 +24,7 @@ package no.nordicsemi.android.error;
 
 import android.bluetooth.BluetoothGatt;
 
-import no.nordicsemi.android.dfu.DfuBaseService;
+import no.nordicsemi.android.dfu.DfuBaseThread;
 
 /**
  * Parses the error numbers according to the <b>gatt_api.h</b> file from bluedroid stack.
@@ -144,37 +144,37 @@ public class GattError {
 				return "GATT VALUE OUT OF RANGE";
 			case 0x0101:
 				return "TOO MANY OPEN CONNECTIONS";
-			case DfuBaseService.ERROR_DEVICE_DISCONNECTED:
+			case DfuBaseThread.ERROR_DEVICE_DISCONNECTED:
 				return "DFU DEVICE DISCONNECTED";
-			case DfuBaseService.ERROR_FILE_NOT_FOUND:
+			case DfuBaseThread.ERROR_FILE_NOT_FOUND:
 				return "DFU FILE NOT FOUND";
-			case DfuBaseService.ERROR_FILE_ERROR:
+			case DfuBaseThread.ERROR_FILE_ERROR:
 				return "DFU FILE ERROR";
-			case DfuBaseService.ERROR_FILE_INVALID:
+			case DfuBaseThread.ERROR_FILE_INVALID:
 				return "DFU NOT A VALID HEX FILE";
-			case DfuBaseService.ERROR_FILE_IO_EXCEPTION:
+			case DfuBaseThread.ERROR_FILE_IO_EXCEPTION:
 				return "DFU IO EXCEPTION";
-			case DfuBaseService.ERROR_SERVICE_DISCOVERY_NOT_STARTED:
+			case DfuBaseThread.ERROR_SERVICE_DISCOVERY_NOT_STARTED:
 				return "DFU SERVICE DISCOVERY NOT STARTED";
-			case DfuBaseService.ERROR_SERVICE_NOT_FOUND:
+			case DfuBaseThread.ERROR_SERVICE_NOT_FOUND:
 				return "DFU SERVICE NOT FOUND";
-			case DfuBaseService.ERROR_CHARACTERISTICS_NOT_FOUND:
+			case DfuBaseThread.ERROR_CHARACTERISTICS_NOT_FOUND:
 				return "DFU CHARACTERISTICS NOT FOUND";
-			case DfuBaseService.ERROR_INVALID_RESPONSE:
+			case DfuBaseThread.ERROR_INVALID_RESPONSE:
 				return "DFU INVALID RESPONSE";
-			case DfuBaseService.ERROR_FILE_TYPE_UNSUPPORTED:
+			case DfuBaseThread.ERROR_FILE_TYPE_UNSUPPORTED:
 				return "DFU FILE TYPE NOT SUPPORTED";
-			case DfuBaseService.ERROR_BLUETOOTH_DISABLED:
+			case DfuBaseThread.ERROR_BLUETOOTH_DISABLED:
 				return "BLUETOOTH ADAPTER DISABLED";
-			case DfuBaseService.ERROR_INIT_PACKET_REQUIRED:
+			case DfuBaseThread.ERROR_INIT_PACKET_REQUIRED:
 				return "INIT PACKET REQUIRED";
-			case DfuBaseService.ERROR_FILE_SIZE_INVALID:
+			case DfuBaseThread.ERROR_FILE_SIZE_INVALID:
 				return "DFU FILE NOT WORD ALIGNED";
-			case DfuBaseService.ERROR_DEVICE_NOT_BONDED:
+			case DfuBaseThread.ERROR_DEVICE_NOT_BONDED:
 				return "DFU DEVICE NOT BONDED";
 			default:
 				// Deprecated: use Legacy or SecureDfuError parser
-				if ((DfuBaseService.ERROR_REMOTE_MASK & error) > 0) {
+				if ((DfuBaseThread.ERROR_REMOTE_MASK & error) > 0) {
 					return LegacyDfuError.parse(error);
 				}
 		}

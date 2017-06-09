@@ -22,7 +22,7 @@
 
 package no.nordicsemi.android.error;
 
-import no.nordicsemi.android.dfu.DfuBaseService;
+import no.nordicsemi.android.dfu.DfuBaseThread;
 
 public final class SecureDfuError {
 	// DFU status values
@@ -51,7 +51,7 @@ public final class SecureDfuError {
 	public static final int EXT_ERROR_INSUFFICIENT_SPACE = 0x0D;
 
 	public static String parse(final int error) {
-		switch (error & (~DfuBaseService.ERROR_REMOTE_MASK)) {
+		switch (error & (~DfuBaseThread.ERROR_REMOTE_MASK)) {
 			case OP_CODE_NOT_SUPPORTED:			return "REMOTE DFU OP CODE NOT SUPPORTED";
 			case INVALID_PARAM:					return "REMOTE DFU INVALID PARAM";
 			case INSUFFICIENT_RESOURCES:		return "REMOTE DFU INSUFFICIENT RESOURCES";

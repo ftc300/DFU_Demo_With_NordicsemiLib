@@ -33,7 +33,7 @@ import android.support.v7.app.AlertDialog;
 import android.util.Log;
 
 import no.nordicsemi.android.nrftoolbox.R;
-import no.nordicsemi.android.nrftoolbox.dfu.DfuService;
+import no.nordicsemi.android.nrftoolbox.dfu.DfuThread;
 
 /**
  * When cancel button is pressed during uploading this fragment shows uploading cancel dialog
@@ -70,8 +70,8 @@ public class UploadCancelFragment extends DialogFragment {
 					@Override
 					public void onClick(final DialogInterface dialog, final int whichButton) {
 						final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(getActivity());
-						final Intent pauseAction = new Intent(DfuService.BROADCAST_ACTION);
-						pauseAction.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
+						final Intent pauseAction = new Intent(DfuThread.BROADCAST_ACTION);
+						pauseAction.putExtra(DfuThread.EXTRA_ACTION, DfuThread.ACTION_ABORT);
 						manager.sendBroadcast(pauseAction);
 
 						mListener.onCancelUpload();
@@ -87,8 +87,8 @@ public class UploadCancelFragment extends DialogFragment {
 	@Override
 	public void onCancel(final DialogInterface dialog) {
 		final LocalBroadcastManager manager = LocalBroadcastManager.getInstance(getActivity());
-		final Intent pauseAction = new Intent(DfuService.BROADCAST_ACTION);
-		pauseAction.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_RESUME);
+		final Intent pauseAction = new Intent(DfuThread.BROADCAST_ACTION);
+		pauseAction.putExtra(DfuThread.EXTRA_ACTION, DfuThread.ACTION_RESUME);
 		manager.sendBroadcast(pauseAction);
 	}
 }

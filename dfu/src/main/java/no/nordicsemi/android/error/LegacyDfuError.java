@@ -22,7 +22,7 @@
 
 package no.nordicsemi.android.error;
 
-import no.nordicsemi.android.dfu.DfuBaseService;
+import no.nordicsemi.android.dfu.DfuBaseThread;
 
 public final class LegacyDfuError {
 	// DFU status values
@@ -34,7 +34,7 @@ public final class LegacyDfuError {
 	public static final int OPERATION_FAILED = 6;
 
 	public static String parse(final int error) {
-		switch (error & (~DfuBaseService.ERROR_REMOTE_MASK)) {
+		switch (error & (~DfuBaseThread.ERROR_REMOTE_MASK)) {
 			case INVALID_STATE:				return "REMOTE DFU INVALID STATE";
 			case NOT_SUPPORTED:				return "REMOTE DFU NOT SUPPORTED";
 			case DATA_SIZE_EXCEEDS_LIMIT:	return "REMOTE DFU DATA SIZE EXCEEDS LIMIT";
